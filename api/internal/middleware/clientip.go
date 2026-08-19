@@ -15,6 +15,9 @@ type clientIPKey struct{}
 // By default it uses r.RemoteAddr. Proxy headers are used only when
 // REMOTE_ADDR is within TRUSTED_PROXY_CIDRS (comma-separated CIDRs), e.g.:
 //   TRUSTED_PROXY_CIDRS=173.245.48.0/20,103.21.244.0/22
+//
+// In Cloudflare mode, only CF-Connecting-IP is trusted as client IP.
+// X-Forwarded-For / X-Real-IP are intentionally ignored to avoid spoofing.
 func ClientIP(next http.Handler) http.Handler {
 	trusted := parseTrustedCIDRs(os.Getenv("TRUSTED_PROXY_CIDRS"))
 
@@ -44,16 +47,11 @@ func resolveClientIP(r *http.Request, trusted []*net.IPNet) string {
 		return remoteIP
 	}
 
-	for _, candidate := range []string{
-		r.Header.Get("CF-Connecting-IP"),
-		r.Header.Get("X-Real-IP"),
-		firstForwardedFor(r.Header.Get("X-Forwarded-For")),
-	} {
-		candidate = strings.TrimSpace(candidate)
-		if net.ParseIP(candidate) != nil {
-			return candidate
-		}
+	cfIP := strings.TrimSpace(r.Header.Get("CF-Connecting-IP"))
+	if net.ParseIP(cfIP) != nil {
+		return cfIP
 	}
+
 	return remoteIP
 }
 
@@ -79,12 +77,4 @@ func isTrustedProxy(ip net.IP, trusted []*net.IPNet) bool {
 		}
 	}
 	return false
-}
-
-func firstForwardedFor(v string) string {
-	if v == "" {
-		return ""
-	}
-	parts := strings.Split(v, ",")
-	return strings.TrimSpace(parts[0])
 }
