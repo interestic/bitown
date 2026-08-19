@@ -42,13 +42,16 @@ func main() {
 		slog.Error("redis connect failed", "err", err)
 		os.Exit(1)
 	}
-	defer rdb.Close()
+	defer func() {
+		if err := rdb.Close(); err != nil {
+			slog.Warn("redis close error", "err", err)
+		}
+	}()
 
 	slog.Info("stores connected")
 
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
-	r.Use(chimw.RealIP)
 	r.Use(chimw.Logger)
 	r.Use(chimw.Recoverer)
 	r.Use(middleware.CORS)

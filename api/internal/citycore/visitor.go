@@ -1,4 +1,4 @@
-package city
+package citycore
 
 import (
 	"crypto/sha256"
@@ -8,16 +8,13 @@ import (
 	"time"
 )
 
-// visitorHash returns a privacy-safe daily hash for rate-limiting.
+// VisitorHash returns a privacy-safe daily hash for rate-limiting.
 // It combines IP, User-Agent, daily UTC date, and a server-side salt seed.
 // Raw IP is never stored.
 //
 // IP is taken solely from r.RemoteAddr, which the chimw.RealIP middleware
 // already resolves from trusted proxy headers (X-Forwarded-For / X-Real-IP).
-// Reading those headers again here would allow clients to spoof their IP and
-// bypass the per-day deduplication limit.
-func visitorHash(r *http.Request, salt string) string {
-	// RemoteAddr is "host:port"; strip the port.
+func VisitorHash(r *http.Request, salt string) string {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		ip = r.RemoteAddr
@@ -31,7 +28,7 @@ func visitorHash(r *http.Request, salt string) string {
 	return fmt.Sprintf("%x", h)
 }
 
-// visitKey returns the Redis key for deduplication.
-func visitKey(date, citySlug, hash string) string {
+// VisitKey returns the Redis key for deduplication.
+func VisitKey(date, citySlug, hash string) string {
 	return fmt.Sprintf("visit:%s:%s:%s", date, citySlug, hash)
 }
