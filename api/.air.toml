@@ -1,0 +1,16 @@
+[build]
+  cmd = "go build -o ./tmp/bitown-api ./cmd/bitown/"
+  bin = "./tmp/bitown-api"
+  delay = 500
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+  kill_delay = "0.5s"
+
+[log]
+  time = true
+
+[color]
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"

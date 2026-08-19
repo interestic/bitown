@@ -1,0 +1,26 @@
+# Go
+api/bitown-api
+api/tmp/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Terraform
+infra/.terraform/
+infra/terraform.tfvars
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/.terraform.lock.hcl
+
+# Node
+web/node_modules/
+web/.next/
+web/out/
+
+# OS
+.DS_Store
+
+# Assets v2 (Phase 3 private only)
+assets/sprites-v2/
