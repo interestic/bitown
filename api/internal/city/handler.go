@@ -13,6 +13,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/interestic/bitown/internal/citycore"
+	"github.com/interestic/bitown/internal/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -20,7 +22,8 @@ import (
 
 // slugRe requires 2-40 chars, lowercase alphanumeric and hyphens,
 // with no leading or trailing hyphens.
-var slugRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`)
+// The mandatory [a-z0-9] at both ends ensures minimum 2 chars.
+var slugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$`)
 
 type Handler struct {
 	db       *pgxpool.Pool
@@ -60,7 +63,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	var city City
+	var city citycore.City
 	err := h.db.QueryRow(ctx,
 		`INSERT INTO cities (slug, name, country_code) VALUES ($1, $2, $3)
 		 RETURNING slug, name, country_code, owner_id, pop, ind, tra, sec, env, com, created_at`,
@@ -106,9 +109,9 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	if req.Sector == "" {
-		req.Sector = SectorPop
+		req.Sector = citycore.SectorPop
 	}
-	if !validSectors[req.Sector] {
+	if !citycore.ValidSectors[req.Sector] {
 		http.Error(w, "invalid sector", http.StatusBadRequest)
 		return
 	}
@@ -124,17 +127,17 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !IsUnlocked(city, req.Sector) {
+	if !citycore.IsUnlocked(city, req.Sector) {
 		http.Error(w, fmt.Sprintf("sector %s not yet unlocked", req.Sector), http.StatusForbidden)
 		return
 	}
 
-	hash := visitorHash(r, h.saltSeed)
 	now := time.Now().UTC()
+	clientIP := middleware.GetClientIP(r)
+	hash := citycore.VisitorHashFromValues(clientIP, r.UserAgent(), h.saltSeed, now)
 	date := now.Format("2006-01-02")
-	key := visitKey(date, slug, hash)
+	key := citycore.VisitKey(date, slug, hash)
 
-	// Deduplicate: SETNX with TTL until end of UTC day
 	endOfDay := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
 	ttl := endOfDay.Sub(now)
 
@@ -150,7 +153,7 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	col := sectorColumn(req.Sector)
+	col := citycore.SectorColumn(req.Sector)
 	_, err = h.db.Exec(ctx,
 		fmt.Sprintf(`UPDATE cities SET %s = %s + 1 WHERE slug = $1`, col, col),
 		slug)
@@ -201,9 +204,9 @@ func (h *Handler) Rankings(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	cities := []City{}
+	cities := []citycore.City{}
 	for rows.Next() {
-		var c City
+		var c citycore.City
 		if err := rows.Scan(&c.Slug, &c.Name, &c.CountryCode,
 			&c.Pop, &c.Ind, &c.Tra, &c.Sec, &c.Env, &c.Com, &c.CreatedAt); err != nil {
 			slog.Warn("rankings: failed to scan row", "err", err)
@@ -254,8 +257,8 @@ func (h *Handler) Badge(w http.ResponseWriter, r *http.Request) {
 	_ = badgeTmpl.Execute(w, city)
 }
 
-func (h *Handler) getCity(ctx context.Context, slug string) (*City, error) {
-	var c City
+func (h *Handler) getCity(ctx context.Context, slug string) (*citycore.City, error) {
+	var c citycore.City
 	err := h.db.QueryRow(ctx,
 		`SELECT slug, name, country_code, owner_id, pop, ind, tra, sec, env, com, created_at
 		 FROM cities WHERE slug = $1`, slug,
@@ -265,26 +268,4 @@ func (h *Handler) getCity(ctx context.Context, slug string) (*City, error) {
 		return nil, err
 	}
 	return &c, nil
-}
-
-// sectorColumn returns the hardcoded column name for a sector.
-// Using a switch instead of string interpolation prevents any possibility
-// of user-controlled input reaching the SQL query string.
-func sectorColumn(sector string) string {
-	switch sector {
-	case SectorPop:
-		return "pop"
-	case SectorInd:
-		return "ind"
-	case SectorTra:
-		return "tra"
-	case SectorSec:
-		return "sec"
-	case SectorEnv:
-		return "env"
-	case SectorCom:
-		return "com"
-	default:
-		return "pop"
-	}
 }

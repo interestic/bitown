@@ -1,4 +1,5 @@
-package city
+// Package citycore contains pure domain types and logic with no external dependencies.
+package citycore
 
 import "time"
 
@@ -26,7 +27,7 @@ const (
 	SectorCom = "com"
 )
 
-var validSectors = map[string]bool{
+var ValidSectors = map[string]bool{
 	SectorPop: true,
 	SectorInd: true,
 	SectorTra: true,
@@ -35,7 +36,7 @@ var validSectors = map[string]bool{
 	SectorCom: true,
 }
 
-// Unlock thresholds: sector is available when pop >= threshold.
+// unlockThresholds: sector is available when pop >= threshold.
 var unlockThresholds = map[string]int{
 	SectorPop: 0,
 	SectorInd: 50,
@@ -51,4 +52,25 @@ func IsUnlocked(c *City, sector string) bool {
 		return false
 	}
 	return c.Pop >= threshold
+}
+
+// SectorColumn returns the SQL column name for a sector.
+// Using a switch instead of string interpolation prevents SQL injection.
+func SectorColumn(sector string) string {
+	switch sector {
+	case SectorPop:
+		return "pop"
+	case SectorInd:
+		return "ind"
+	case SectorTra:
+		return "tra"
+	case SectorSec:
+		return "sec"
+	case SectorEnv:
+		return "env"
+	case SectorCom:
+		return "com"
+	default:
+		return "pop"
+	}
 }
