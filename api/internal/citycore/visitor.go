@@ -11,21 +11,21 @@ import (
 // VisitorHash returns a privacy-safe daily hash for rate-limiting.
 // It combines IP, User-Agent, daily UTC date, and a server-side salt seed.
 // Raw IP is never stored.
-//
-// IP is taken solely from r.RemoteAddr, which the chimw.RealIP middleware
-// already resolves from trusted proxy headers (X-Forwarded-For / X-Real-IP).
 func VisitorHash(r *http.Request, salt string) string {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		ip = r.RemoteAddr
 	}
 
-	ua := r.UserAgent()
-	date := time.Now().UTC().Format("2006-01-02")
+	return VisitorHashFromValues(ip, r.UserAgent(), salt, time.Now().UTC())
+}
 
-	raw := fmt.Sprintf("%s:%s:%s:%s", ip, ua, date, salt)
-	h := sha256.Sum256([]byte(raw))
-	return fmt.Sprintf("%x", h)
+// VisitorHashFromValues is the deterministic hash builder used by VisitorHash.
+func VisitorHashFromValues(ip, userAgent, salt string, now time.Time) string {
+	date := now.Format("2006-01-02")
+	raw := fmt.Sprintf("%s:%s:%s:%s", ip, userAgent, date, salt)
+	sum := sha256.Sum256([]byte(raw))
+	return fmt.Sprintf("%x", sum)
 }
 
 // VisitKey returns the Redis key for deduplication.

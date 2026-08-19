@@ -52,6 +52,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
+	r.Use(middleware.ClientIP)
 	r.Use(chimw.Logger)
 	r.Use(chimw.Recoverer)
 	r.Use(middleware.CORS)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/interestic/bitown/internal/citycore"
+	"github.com/interestic/bitown/internal/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -131,8 +132,9 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hash := citycore.VisitorHash(r, h.saltSeed)
 	now := time.Now().UTC()
+	clientIP := middleware.GetClientIP(r)
+	hash := citycore.VisitorHashFromValues(clientIP, r.UserAgent(), h.saltSeed, now)
 	date := now.Format("2006-01-02")
 	key := citycore.VisitKey(date, slug, hash)
 
