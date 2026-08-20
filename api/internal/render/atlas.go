@@ -64,6 +64,8 @@ var mapBuildingTags = map[string]struct{}{
 }
 
 // Tokens that must never enter the map building pool, even if the manifest is stale.
+// Keep in sync with scripts/check_assets.py BUILDING_DENY_SUBSTR.
+// Empty mcHouse clips are excluded via overrides, not deny (real houses share the token).
 var buildingDenySubstr = []string{
 	"mcLoading", "mcAnti", "mcAnalog", "mcStat", "mcCompt", "mcObs",
 	"mcTest", "mcBg", "mcDalle", "mcRoad", "brushWood", "StatPanel", "StatusBar",
@@ -325,8 +327,9 @@ func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, er
 		if !ok || tag == "" {
 			continue
 		}
-		if deniedBuildingFolder(folder) {
-			if _, building := mapBuildingTags[tag]; building {
+		if _, building := mapBuildingTags[tag]; building {
+			// Building draws must stay inside building_bases ∩ deny filter.
+			if _, ok := allowed[folder]; !ok {
 				continue
 			}
 		}

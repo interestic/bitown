@@ -35,14 +35,15 @@ BUILDING_TAGS = frozenset({"residential", "industrial", "commercial", "landmark"
 
 UI_NAME_PATTERNS = (
     re.compile(r"mcLoading", re.I),
-    re.compile(r"mcAntiPanel", re.I),
-    re.compile(r"mcAntiLayer", re.I),
+    re.compile(r"mcAnti", re.I),
     re.compile(r"mcAnalog", re.I),
-    re.compile(r"mcStatSlot", re.I),
-    re.compile(r"mcStats", re.I),
+    re.compile(r"mcStat", re.I),
     re.compile(r"mcCompt", re.I),
+    re.compile(r"mcObs", re.I),
     re.compile(r"mcTest", re.I),
     re.compile(r"mcBg", re.I),
+    re.compile(r"mcDalle", re.I),
+    re.compile(r"brushWood", re.I),
     re.compile(r"StatPanel", re.I),
     re.compile(r"StatusBar", re.I),
 )
@@ -55,7 +56,16 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
     max_opaque = 0
     max_bbox_h = 0
     max_bbox_w = 0
-    blues = yellows = greens = blacks = semi = strong = cyan = grays = 0
+    best_counts = {
+        "blue": 0,
+        "cyan": 0,
+        "yellow": 0,
+        "green": 0,
+        "black": 0,
+        "gray": 0,
+        "semi": 0,
+        "strong": 0,
+    }
     canvas_pixels = 0
     for png in folder.glob("*.png"):
         im = Image.open(png).convert("RGBA")
@@ -63,6 +73,7 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
         w, h = im.size
         canvas_pixels = max(canvas_pixels, w * h)
         opaque = 0
+        counts = {k: 0 for k in best_counts}
         for y in range(h):
             for x in range(w):
                 r, g, b, a = pixels[x, y]
@@ -70,22 +81,24 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
                     continue
                 opaque += 1
                 if b > r + 30 and b > g + 10:
-                    blues += 1
+                    counts["blue"] += 1
                 if b > r + 25 and g > r + 10 and b > 120 and g > 90:
-                    cyan += 1
+                    counts["cyan"] += 1
                 if r > 180 and g > 150 and b < 120:
-                    yellows += 1
+                    counts["yellow"] += 1
                 if g > r + 15 and g > b + 15:
-                    greens += 1
+                    counts["green"] += 1
                 if r < 35 and g < 35 and b < 35:
-                    blacks += 1
+                    counts["black"] += 1
                 if abs(r - g) < 15 and abs(g - b) < 15 and r < 160:
-                    grays += 1
+                    counts["gray"] += 1
                 if 16 < a < 180:
-                    semi += 1
+                    counts["semi"] += 1
                 if a >= 220:
-                    strong += 1
-        max_opaque = max(max_opaque, opaque)
+                    counts["strong"] += 1
+        if opaque > max_opaque:
+            max_opaque = opaque
+            best_counts = counts
         bbox = im.getbbox()
         if bbox:
             max_bbox_h = max(max_bbox_h, bbox[3] - bbox[1])
@@ -94,14 +107,14 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
     denom = max(max_opaque, 1)
     fill = max_opaque / max(canvas_pixels, 1)
     colors = {
-        "blue_ratio": blues / denom,
-        "cyan_ratio": cyan / denom,
-        "yellow_ratio": yellows / denom,
-        "green_ratio": greens / denom,
-        "black_ratio": blacks / denom,
-        "gray_ratio": grays / denom,
-        "semi_ratio": semi / denom,
-        "strong_ratio": strong / denom,
+        "blue_ratio": best_counts["blue"] / denom,
+        "cyan_ratio": best_counts["cyan"] / denom,
+        "yellow_ratio": best_counts["yellow"] / denom,
+        "green_ratio": best_counts["green"] / denom,
+        "black_ratio": best_counts["black"] / denom,
+        "gray_ratio": best_counts["gray"] / denom,
+        "semi_ratio": best_counts["semi"] / denom,
+        "strong_ratio": best_counts["strong"] / denom,
         "fill_ratio": fill,
     }
     return max_opaque, max_bbox_h, max_bbox_w, colors
@@ -183,6 +196,8 @@ def apply_override(group: str, tag: str, override: str | None) -> tuple[str, str
     if override is None:
         return group, tag
     if override in BUILDING_TAGS:
+        if group == "ui":
+            raise SystemExit(f"refusing to promote ui sprite to building via override ({override})")
         return "building", override
     if override == "exclude":
         if group == "ui":

@@ -124,6 +124,10 @@ func mustEnv(key string) string {
 }
 
 func isDebugModeEnabled() bool {
+	env := strings.TrimSpace(strings.ToLower(os.Getenv("ENV")))
+	if env == "production" || env == "prod" {
+		return false
+	}
 	v := strings.TrimSpace(strings.ToLower(os.Getenv("DEBUG_MODE")))
 	return v == "true" || v == "1" || v == "yes"
 }

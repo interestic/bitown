@@ -39,6 +39,8 @@ def normalize_png(src: Path, dst: Path) -> None:
 
 def main() -> None:
     NORMALIZED.mkdir(parents=True, exist_ok=True)
+    for stale in NORMALIZED.rglob("*.png"):
+        stale.unlink()
     count = 0
     for src in RAW.rglob("*.png"):
         rel = src.relative_to(RAW)

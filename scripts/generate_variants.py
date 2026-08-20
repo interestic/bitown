@@ -35,6 +35,8 @@ def shift_hue(img: Image.Image, shift: int) -> Image.Image:
 
 def main() -> None:
     DST.mkdir(parents=True, exist_ok=True)
+    for stale in DST.rglob("*.png"):
+        stale.unlink()
     count = 0
     for src in SRC.rglob("*.png"):
         rel = src.relative_to(SRC)

@@ -8,6 +8,8 @@ import (
 )
 
 func TestRoadNetworkHasFewGrassSeams(t *testing.T) {
+	forceFallbackAtlas(t)
+
 	city := &citycore.City{Slug: "road-seam-check", Pop: 500}
 	data, err := BuildCityMapPNG(city)
 	if err != nil {

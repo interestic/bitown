@@ -10,10 +10,9 @@ make assets-check
 
 ## Checks
 
-- required folders exist:
-  - `raw/`
-  - `normalized/`
-  - `variants/`
+- pipeline folders (`raw/`, `normalized/`, `variants/`):
+  - required before atlas metadata exists
+  - optional (warn only) once `atlas/sprites_v1_atlas.json` is present
 - if atlas metadata exists, validate `frames` schema, the atlas PNG, and `buildings.json`:
   - each frame has `x,y,w,h,anchor_x,anchor_y` and stays inside the PNG
   - frames are not all 32×32

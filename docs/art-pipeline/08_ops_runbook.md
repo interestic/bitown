@@ -9,8 +9,9 @@ This runbook ties Step1-7 into an executable sequence for contributors.
 3. `scripts/normalize_sprites.py`
 4. `scripts/generate_variants.py`
 5. `scripts/build_atlas.py`
-6. `GET /api/cities/{slug}/map.png` (atlas renderer; rectangle fallback in dev)
+6. `scripts/generate_buildings_manifest.py`
 7. `make assets-check`
+8. `GET /api/cities/{slug}/map.png` (atlas renderer; rectangle fallback in dev)
 
 ## Quick commands
 
@@ -26,6 +27,9 @@ python3 scripts/generate_variants.py
 
 # step5
 python3 scripts/build_atlas.py
+
+# step6
+python3 scripts/generate_buildings_manifest.py
 
 # step7
 make assets-check

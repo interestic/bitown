@@ -39,7 +39,8 @@ See [Local Dev wiki](https://github.com/interestic/bitown/wiki/Local-Dev) for fu
 
 ### Debug mode (optional)
 
-Set `DEBUG_MODE=true` to enable a debug endpoint for inspecting a specific city.
+Set `DEBUG_MODE=true` (in `.env` or the shell) to enable a debug endpoint for
+inspecting a specific city. Debug mode is ignored when `ENV=production`.
 
 ```bash
 DEBUG_MODE=true make up

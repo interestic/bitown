@@ -451,6 +451,63 @@ func TestCatalogDropsExcludeWithoutDenyName(t *testing.T) {
 	}
 }
 
+func TestPickKeyForTagIgnoresBuildingTaggedOutsideAllowlist(t *testing.T) {
+	assets := t.TempDir()
+	writeMinimalSpritesV1(t, assets, true)
+	sprites := filepath.Join(assets, "sprites-v1")
+	meta := `{
+  "image": "sprites_v1_atlas.png",
+  "count": 2,
+  "frames": {
+    "sprites/House_a/1_v00.png": {"x": 0, "y": 0, "w": 32, "h": 32, "anchor_x": 16, "anchor_y": 32},
+    "sprites/UI_Badge/1_v00.png": {"x": 0, "y": 0, "w": 32, "h": 32, "anchor_x": 16, "anchor_y": 32}
+  }
+}`
+	if err := os.WriteFile(filepath.Join(sprites, "atlas", "sprites_v1_atlas.json"), []byte(meta), 0o644); err != nil {
+		t.Fatalf("write atlas json: %v", err)
+	}
+	// Stale/hand-edited catalog: UI entry tagged residential but not in building_bases.
+	manifest := `{
+  "version": 2,
+  "building_bases": ["sprites/House_a"],
+  "bases_by_tag": {
+    "residential": ["sprites/House_a", "sprites/UI_Badge"],
+    "industrial": [],
+    "commercial": [],
+    "landmark": [],
+    "road": [],
+    "tree": [],
+    "water": [],
+    "park": [],
+    "exclude": []
+  },
+  "entries": [
+    {"base": "sprites/House_a", "group": "building", "tag": "residential"},
+    {"base": "sprites/UI_Badge", "group": "building", "tag": "residential"}
+  ]
+}`
+	if err := os.WriteFile(filepath.Join(sprites, "buildings.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write buildings json: %v", err)
+	}
+	t.Setenv("BITOWN_ASSETS_DIR", assets)
+	ResetAtlasCacheForTest()
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatalf("load atlas: %v", err)
+	}
+	for _, base := range atlas.BasesForTag(TagResidential) {
+		if spriteFolderBase(base) == "sprites/UI_Badge" {
+			t.Fatalf("UI outside building_bases entered BasesForTag: %v", atlas.BasesForTag(TagResidential))
+		}
+	}
+	for seed := uint32(0); seed < 8; seed++ {
+		key := atlas.PickKeyForTag(TagResidential, seed)
+		if strings.Contains(key, "UI_Badge") {
+			t.Fatalf("PickKeyForTag selected UI outside allowlist: %q", key)
+		}
+	}
+}
+
 func TestRejectsV1BuildingsManifest(t *testing.T) {
 	assets := t.TempDir()
 	writeMinimalSpritesV1(t, assets, true)

@@ -39,9 +39,8 @@ type Handler struct {
 }
 
 type debugSupportLog struct {
-	Sector     string    `json:"sector"`
-	CreatedAt  time.Time `json:"created_at"`
-	VisitorTag string    `json:"visitor_tag"`
+	Sector    string    `json:"sector"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func NewHandler(db dbPool, rdb *redis.Client, saltSeed string) *Handler {
@@ -165,7 +164,7 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logRows, err := h.db.Query(ctx,
-		`SELECT sector, created_at, visitor_hash
+		`SELECT sector, created_at
 		 FROM visites_log
 		 WHERE city_slug = $1
 		 ORDER BY created_at DESC
@@ -180,15 +179,9 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 	recent := make([]debugSupportLog, 0, 20)
 	for logRows.Next() {
 		var item debugSupportLog
-		var visitorHash string
-		if scanErr := logRows.Scan(&item.Sector, &item.CreatedAt, &visitorHash); scanErr != nil {
+		if scanErr := logRows.Scan(&item.Sector, &item.CreatedAt); scanErr != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
-		}
-		if len(visitorHash) >= 8 {
-			item.VisitorTag = visitorHash[:8]
-		} else {
-			item.VisitorTag = visitorHash
 		}
 		recent = append(recent, item)
 	}
