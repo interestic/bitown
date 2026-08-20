@@ -1,0 +1,2348 @@
+{
+  "version": 2,
+  "source": "scripts/generate_buildings_manifest.py",
+  "overrides": "assets/sprites-v1/sprite_tag_overrides.json",
+  "rules": {
+    "ui": "named Flash UI clips (mcStats, mcLoading, ...)",
+    "road": "mcRoad in name",
+    "water": "blue-dominant opaque fills (ponds, circles)",
+    "tree": "green-dominant sprites with bbox_h>=14",
+    "residential": "building-like fills that are neither industrial nor commercial",
+    "industrial": "gray/black-heavy tall or wide warehouse-like masses",
+    "commercial": "wide mid-height commercial footprints (bbox_w>=70, bbox_h<=70)",
+    "character": "opaque<=180 and bbox_h<=13",
+    "exclude": "yellow fills, full-canvas junk, flat leftovers, overrides",
+    "override_file": "sprite_tag_overrides.json wins after heuristics"
+  },
+  "counts": {
+    "building": 24,
+    "character": 28,
+    "ui": 9,
+    "other": 191,
+    "by_tag": {
+      "residential": 12,
+      "industrial": 9,
+      "commercial": 3,
+      "landmark": 0,
+      "road": 1,
+      "tree": 6,
+      "water": 10,
+      "park": 0,
+      "exclude": 211
+    }
+  },
+  "building_bases": [
+    "sprites/DefineSprite_209",
+    "sprites/DefineSprite_211",
+    "sprites/DefineSprite_226",
+    "sprites/DefineSprite_235",
+    "sprites/DefineSprite_267",
+    "sprites/DefineSprite_277",
+    "sprites/DefineSprite_285",
+    "sprites/DefineSprite_299",
+    "sprites/DefineSprite_405",
+    "sprites/DefineSprite_441",
+    "sprites/DefineSprite_469",
+    "sprites/DefineSprite_477",
+    "sprites/DefineSprite_481",
+    "sprites/DefineSprite_492",
+    "sprites/DefineSprite_496",
+    "sprites/DefineSprite_500",
+    "sprites/DefineSprite_501",
+    "sprites/DefineSprite_598",
+    "sprites/DefineSprite_610",
+    "sprites/DefineSprite_633",
+    "sprites/DefineSprite_663",
+    "sprites/DefineSprite_690",
+    "sprites/DefineSprite_721",
+    "sprites/DefineSprite_747"
+  ],
+  "bases_by_tag": {
+    "residential": [
+      "sprites/DefineSprite_226",
+      "sprites/DefineSprite_235",
+      "sprites/DefineSprite_299",
+      "sprites/DefineSprite_441",
+      "sprites/DefineSprite_469",
+      "sprites/DefineSprite_477",
+      "sprites/DefineSprite_501",
+      "sprites/DefineSprite_598",
+      "sprites/DefineSprite_610",
+      "sprites/DefineSprite_633",
+      "sprites/DefineSprite_690",
+      "sprites/DefineSprite_721"
+    ],
+    "industrial": [
+      "sprites/DefineSprite_209",
+      "sprites/DefineSprite_211",
+      "sprites/DefineSprite_267",
+      "sprites/DefineSprite_481",
+      "sprites/DefineSprite_492",
+      "sprites/DefineSprite_496",
+      "sprites/DefineSprite_500",
+      "sprites/DefineSprite_663",
+      "sprites/DefineSprite_747"
+    ],
+    "commercial": [
+      "sprites/DefineSprite_277",
+      "sprites/DefineSprite_285",
+      "sprites/DefineSprite_405"
+    ],
+    "landmark": [],
+    "road": [
+      "sprites/DefineSprite_702_mcRoad"
+    ],
+    "tree": [
+      "sprites/DefineSprite_111",
+      "sprites/DefineSprite_14",
+      "sprites/DefineSprite_172",
+      "sprites/DefineSprite_307",
+      "sprites/DefineSprite_361",
+      "sprites/DefineSprite_382"
+    ],
+    "water": [
+      "sprites/DefineSprite_155",
+      "sprites/DefineSprite_159",
+      "sprites/DefineSprite_162",
+      "sprites/DefineSprite_3",
+      "sprites/DefineSprite_349",
+      "sprites/DefineSprite_493",
+      "sprites/DefineSprite_561",
+      "sprites/DefineSprite_613",
+      "sprites/DefineSprite_692",
+      "sprites/DefineSprite_7"
+    ],
+    "park": [],
+    "exclude": [
+      "sprites/DefineSprite_11",
+      "sprites/DefineSprite_123",
+      "sprites/DefineSprite_126_mcLoading",
+      "sprites/DefineSprite_132_mcAntiPanel",
+      "sprites/DefineSprite_135_mcAntiLayer",
+      "sprites/DefineSprite_137_brushWood",
+      "sprites/DefineSprite_140",
+      "sprites/DefineSprite_142",
+      "sprites/DefineSprite_143",
+      "sprites/DefineSprite_144",
+      "sprites/DefineSprite_148",
+      "sprites/DefineSprite_149_mcAnalog",
+      "sprites/DefineSprite_153_mcStatSlot",
+      "sprites/DefineSprite_157",
+      "sprites/DefineSprite_160_mcStats",
+      "sprites/DefineSprite_164",
+      "sprites/DefineSprite_166",
+      "sprites/DefineSprite_167",
+      "sprites/DefineSprite_169_mcCompt",
+      "sprites/DefineSprite_17",
+      "sprites/DefineSprite_175",
+      "sprites/DefineSprite_178",
+      "sprites/DefineSprite_181",
+      "sprites/DefineSprite_184",
+      "sprites/DefineSprite_186",
+      "sprites/DefineSprite_189",
+      "sprites/DefineSprite_193",
+      "sprites/DefineSprite_195",
+      "sprites/DefineSprite_199",
+      "sprites/DefineSprite_200",
+      "sprites/DefineSprite_204",
+      "sprites/DefineSprite_206",
+      "sprites/DefineSprite_208",
+      "sprites/DefineSprite_21",
+      "sprites/DefineSprite_213",
+      "sprites/DefineSprite_215",
+      "sprites/DefineSprite_217",
+      "sprites/DefineSprite_22",
+      "sprites/DefineSprite_225",
+      "sprites/DefineSprite_230",
+      "sprites/DefineSprite_234",
+      "sprites/DefineSprite_238",
+      "sprites/DefineSprite_240",
+      "sprites/DefineSprite_242",
+      "sprites/DefineSprite_248",
+      "sprites/DefineSprite_249",
+      "sprites/DefineSprite_250",
+      "sprites/DefineSprite_253",
+      "sprites/DefineSprite_256",
+      "sprites/DefineSprite_257",
+      "sprites/DefineSprite_260",
+      "sprites/DefineSprite_262",
+      "sprites/DefineSprite_263",
+      "sprites/DefineSprite_265",
+      "sprites/DefineSprite_266",
+      "sprites/DefineSprite_269",
+      "sprites/DefineSprite_272",
+      "sprites/DefineSprite_275",
+      "sprites/DefineSprite_276",
+      "sprites/DefineSprite_280",
+      "sprites/DefineSprite_281",
+      "sprites/DefineSprite_284",
+      "sprites/DefineSprite_286",
+      "sprites/DefineSprite_289",
+      "sprites/DefineSprite_291",
+      "sprites/DefineSprite_293",
+      "sprites/DefineSprite_294",
+      "sprites/DefineSprite_295",
+      "sprites/DefineSprite_298",
+      "sprites/DefineSprite_310",
+      "sprites/DefineSprite_312",
+      "sprites/DefineSprite_316",
+      "sprites/DefineSprite_317",
+      "sprites/DefineSprite_318",
+      "sprites/DefineSprite_320",
+      "sprites/DefineSprite_323",
+      "sprites/DefineSprite_326",
+      "sprites/DefineSprite_328",
+      "sprites/DefineSprite_331",
+      "sprites/DefineSprite_334",
+      "sprites/DefineSprite_339",
+      "sprites/DefineSprite_34",
+      "sprites/DefineSprite_354",
+      "sprites/DefineSprite_355",
+      "sprites/DefineSprite_358",
+      "sprites/DefineSprite_365",
+      "sprites/DefineSprite_368",
+      "sprites/DefineSprite_374",
+      "sprites/DefineSprite_378",
+      "sprites/DefineSprite_380",
+      "sprites/DefineSprite_381",
+      "sprites/DefineSprite_388",
+      "sprites/DefineSprite_391",
+      "sprites/DefineSprite_393",
+      "sprites/DefineSprite_395",
+      "sprites/DefineSprite_396",
+      "sprites/DefineSprite_399",
+      "sprites/DefineSprite_401",
+      "sprites/DefineSprite_409",
+      "sprites/DefineSprite_410_mcObs",
+      "sprites/DefineSprite_411_mcHouse1",
+      "sprites/DefineSprite_415",
+      "sprites/DefineSprite_418",
+      "sprites/DefineSprite_426",
+      "sprites/DefineSprite_427",
+      "sprites/DefineSprite_428",
+      "sprites/DefineSprite_432",
+      "sprites/DefineSprite_435",
+      "sprites/DefineSprite_436",
+      "sprites/DefineSprite_439",
+      "sprites/DefineSprite_440",
+      "sprites/DefineSprite_448",
+      "sprites/DefineSprite_450",
+      "sprites/DefineSprite_451",
+      "sprites/DefineSprite_453",
+      "sprites/DefineSprite_455",
+      "sprites/DefineSprite_456",
+      "sprites/DefineSprite_462",
+      "sprites/DefineSprite_467",
+      "sprites/DefineSprite_468",
+      "sprites/DefineSprite_475",
+      "sprites/DefineSprite_476",
+      "sprites/DefineSprite_485",
+      "sprites/DefineSprite_487",
+      "sprites/DefineSprite_488",
+      "sprites/DefineSprite_491",
+      "sprites/DefineSprite_499",
+      "sprites/DefineSprite_5",
+      "sprites/DefineSprite_503",
+      "sprites/DefineSprite_507",
+      "sprites/DefineSprite_510",
+      "sprites/DefineSprite_514",
+      "sprites/DefineSprite_516",
+      "sprites/DefineSprite_518",
+      "sprites/DefineSprite_520",
+      "sprites/DefineSprite_521",
+      "sprites/DefineSprite_522_mcHouse2",
+      "sprites/DefineSprite_527",
+      "sprites/DefineSprite_531",
+      "sprites/DefineSprite_532",
+      "sprites/DefineSprite_534",
+      "sprites/DefineSprite_538",
+      "sprites/DefineSprite_539",
+      "sprites/DefineSprite_541",
+      "sprites/DefineSprite_544",
+      "sprites/DefineSprite_545",
+      "sprites/DefineSprite_548",
+      "sprites/DefineSprite_551",
+      "sprites/DefineSprite_554",
+      "sprites/DefineSprite_557",
+      "sprites/DefineSprite_559",
+      "sprites/DefineSprite_566",
+      "sprites/DefineSprite_569",
+      "sprites/DefineSprite_572",
+      "sprites/DefineSprite_575",
+      "sprites/DefineSprite_577",
+      "sprites/DefineSprite_579",
+      "sprites/DefineSprite_582",
+      "sprites/DefineSprite_584",
+      "sprites/DefineSprite_586",
+      "sprites/DefineSprite_588",
+      "sprites/DefineSprite_592",
+      "sprites/DefineSprite_595",
+      "sprites/DefineSprite_597",
+      "sprites/DefineSprite_616",
+      "sprites/DefineSprite_619",
+      "sprites/DefineSprite_620",
+      "sprites/DefineSprite_622",
+      "sprites/DefineSprite_626",
+      "sprites/DefineSprite_627",
+      "sprites/DefineSprite_631",
+      "sprites/DefineSprite_637",
+      "sprites/DefineSprite_639",
+      "sprites/DefineSprite_642",
+      "sprites/DefineSprite_646",
+      "sprites/DefineSprite_648",
+      "sprites/DefineSprite_651",
+      "sprites/DefineSprite_652",
+      "sprites/DefineSprite_658",
+      "sprites/DefineSprite_661",
+      "sprites/DefineSprite_676",
+      "sprites/DefineSprite_677",
+      "sprites/DefineSprite_679",
+      "sprites/DefineSprite_681",
+      "sprites/DefineSprite_683",
+      "sprites/DefineSprite_687",
+      "sprites/DefineSprite_688",
+      "sprites/DefineSprite_693_mcHouse3",
+      "sprites/DefineSprite_696",
+      "sprites/DefineSprite_698",
+      "sprites/DefineSprite_699",
+      "sprites/DefineSprite_705",
+      "sprites/DefineSprite_707_mcDalle",
+      "sprites/DefineSprite_708_mcHouse",
+      "sprites/DefineSprite_710_mcTest",
+      "sprites/DefineSprite_712",
+      "sprites/DefineSprite_713_mcBg",
+      "sprites/DefineSprite_719",
+      "sprites/DefineSprite_724",
+      "sprites/DefineSprite_727",
+      "sprites/DefineSprite_729",
+      "sprites/DefineSprite_732",
+      "sprites/DefineSprite_734",
+      "sprites/DefineSprite_735",
+      "sprites/DefineSprite_739",
+      "sprites/DefineSprite_740",
+      "sprites/DefineSprite_743",
+      "sprites/DefineSprite_745",
+      "sprites/DefineSprite_78",
+      "sprites/DefineSprite_80",
+      "sprites/DefineSprite_88"
+    ]
+  },
+  "entries": [
+    {
+      "base": "sprites/DefineSprite_11",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 16,
+      "max_bbox_height": 12,
+      "max_bbox_width": 4
+    },
+    {
+      "base": "sprites/DefineSprite_111",
+      "group": "other",
+      "tag": "tree",
+      "max_opaque_pixels": 203,
+      "max_bbox_height": 32,
+      "max_bbox_width": 22
+    },
+    {
+      "base": "sprites/DefineSprite_123",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 474,
+      "max_bbox_height": 46,
+      "max_bbox_width": 24
+    },
+    {
+      "base": "sprites/DefineSprite_126_mcLoading",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 3132,
+      "max_bbox_height": 70,
+      "max_bbox_width": 47
+    },
+    {
+      "base": "sprites/DefineSprite_132_mcAntiPanel",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 2976,
+      "max_bbox_height": 32,
+      "max_bbox_width": 94
+    },
+    {
+      "base": "sprites/DefineSprite_135_mcAntiLayer",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 6144,
+      "max_bbox_height": 64,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_137_brushWood",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 9,
+      "max_bbox_height": 6,
+      "max_bbox_width": 6
+    },
+    {
+      "base": "sprites/DefineSprite_14",
+      "group": "other",
+      "tag": "tree",
+      "max_opaque_pixels": 2160,
+      "max_bbox_height": 96,
+      "max_bbox_width": 24
+    },
+    {
+      "base": "sprites/DefineSprite_140",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 673,
+      "max_bbox_height": 29,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_142",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 673,
+      "max_bbox_height": 29,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_143",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 673,
+      "max_bbox_height": 29,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_144",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 673,
+      "max_bbox_height": 29,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_148",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2904,
+      "max_bbox_height": 31,
+      "max_bbox_width": 95
+    },
+    {
+      "base": "sprites/DefineSprite_149_mcAnalog",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 2047,
+      "max_bbox_height": 26,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_153_mcStatSlot",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 377,
+      "max_bbox_height": 11,
+      "max_bbox_width": 91
+    },
+    {
+      "base": "sprites/DefineSprite_155",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 829,
+      "max_bbox_height": 9,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_157",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 5225,
+      "max_bbox_height": 55,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_159",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 615,
+      "max_bbox_height": 11,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_160_mcStats",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 6342,
+      "max_bbox_height": 71,
+      "max_bbox_width": 90
+    },
+    {
+      "base": "sprites/DefineSprite_162",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 460,
+      "max_bbox_height": 34,
+      "max_bbox_width": 17
+    },
+    {
+      "base": "sprites/DefineSprite_164",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 3168,
+      "max_bbox_height": 33,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_166",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 384,
+      "max_bbox_height": 26,
+      "max_bbox_width": 21
+    },
+    {
+      "base": "sprites/DefineSprite_167",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 448,
+      "max_bbox_height": 27,
+      "max_bbox_width": 22
+    },
+    {
+      "base": "sprites/DefineSprite_169_mcCompt",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 1668,
+      "max_bbox_height": 22,
+      "max_bbox_width": 85
+    },
+    {
+      "base": "sprites/DefineSprite_17",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1351,
+      "max_bbox_height": 96,
+      "max_bbox_width": 19
+    },
+    {
+      "base": "sprites/DefineSprite_172",
+      "group": "other",
+      "tag": "tree",
+      "max_opaque_pixels": 472,
+      "max_bbox_height": 22,
+      "max_bbox_width": 43
+    },
+    {
+      "base": "sprites/DefineSprite_175",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 72,
+      "max_bbox_height": 9,
+      "max_bbox_width": 16
+    },
+    {
+      "base": "sprites/DefineSprite_178",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 145,
+      "max_bbox_height": 13,
+      "max_bbox_width": 18
+    },
+    {
+      "base": "sprites/DefineSprite_181",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 204,
+      "max_bbox_height": 16,
+      "max_bbox_width": 26
+    },
+    {
+      "base": "sprites/DefineSprite_184",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 84,
+      "max_bbox_height": 12,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_186",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 20,
+      "max_bbox_height": 6,
+      "max_bbox_width": 4
+    },
+    {
+      "base": "sprites/DefineSprite_189",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 20,
+      "max_bbox_height": 6,
+      "max_bbox_width": 15
+    },
+    {
+      "base": "sprites/DefineSprite_193",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 19,
+      "max_bbox_height": 6,
+      "max_bbox_width": 6
+    },
+    {
+      "base": "sprites/DefineSprite_195",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 26,
+      "max_bbox_height": 7,
+      "max_bbox_width": 7
+    },
+    {
+      "base": "sprites/DefineSprite_199",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 118,
+      "max_bbox_height": 14,
+      "max_bbox_width": 26
+    },
+    {
+      "base": "sprites/DefineSprite_200",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 824,
+      "max_bbox_height": 33,
+      "max_bbox_width": 49
+    },
+    {
+      "base": "sprites/DefineSprite_204",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 800,
+      "max_bbox_height": 70,
+      "max_bbox_width": 48
+    },
+    {
+      "base": "sprites/DefineSprite_206",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 659,
+      "max_bbox_height": 70,
+      "max_bbox_width": 48
+    },
+    {
+      "base": "sprites/DefineSprite_208",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 996,
+      "max_bbox_height": 65,
+      "max_bbox_width": 38
+    },
+    {
+      "base": "sprites/DefineSprite_209",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 4330,
+      "max_bbox_height": 90,
+      "max_bbox_width": 73
+    },
+    {
+      "base": "sprites/DefineSprite_21",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 604,
+      "max_bbox_height": 81,
+      "max_bbox_width": 18
+    },
+    {
+      "base": "sprites/DefineSprite_211",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 2765,
+      "max_bbox_height": 92,
+      "max_bbox_width": 51
+    },
+    {
+      "base": "sprites/DefineSprite_213",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 281,
+      "max_bbox_height": 20,
+      "max_bbox_width": 19
+    },
+    {
+      "base": "sprites/DefineSprite_215",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 64,
+      "max_bbox_height": 33,
+      "max_bbox_width": 2
+    },
+    {
+      "base": "sprites/DefineSprite_217",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1133,
+      "max_bbox_height": 68,
+      "max_bbox_width": 49
+    },
+    {
+      "base": "sprites/DefineSprite_22",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 659,
+      "max_bbox_height": 84,
+      "max_bbox_width": 12
+    },
+    {
+      "base": "sprites/DefineSprite_225",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 233,
+      "max_bbox_height": 50,
+      "max_bbox_width": 30
+    },
+    {
+      "base": "sprites/DefineSprite_226",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 3609,
+      "max_bbox_height": 87,
+      "max_bbox_width": 56
+    },
+    {
+      "base": "sprites/DefineSprite_230",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 11,
+      "max_bbox_height": 7,
+      "max_bbox_width": 2
+    },
+    {
+      "base": "sprites/DefineSprite_234",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1334,
+      "max_bbox_height": 78,
+      "max_bbox_width": 26
+    },
+    {
+      "base": "sprites/DefineSprite_235",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 3425,
+      "max_bbox_height": 89,
+      "max_bbox_width": 55
+    },
+    {
+      "base": "sprites/DefineSprite_238",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 288,
+      "max_bbox_height": 34,
+      "max_bbox_width": 12
+    },
+    {
+      "base": "sprites/DefineSprite_240",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 8,
+      "max_bbox_height": 4,
+      "max_bbox_width": 4
+    },
+    {
+      "base": "sprites/DefineSprite_242",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1560,
+      "max_bbox_height": 53,
+      "max_bbox_width": 37
+    },
+    {
+      "base": "sprites/DefineSprite_248",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 6,
+      "max_bbox_height": 3,
+      "max_bbox_width": 3
+    },
+    {
+      "base": "sprites/DefineSprite_249",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 172,
+      "max_bbox_height": 13,
+      "max_bbox_width": 21
+    },
+    {
+      "base": "sprites/DefineSprite_250",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1329,
+      "max_bbox_height": 55,
+      "max_bbox_width": 34
+    },
+    {
+      "base": "sprites/DefineSprite_253",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 461,
+      "max_bbox_height": 36,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_256",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 21,
+      "max_bbox_height": 8,
+      "max_bbox_width": 6
+    },
+    {
+      "base": "sprites/DefineSprite_257",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1259,
+      "max_bbox_height": 48,
+      "max_bbox_width": 33
+    },
+    {
+      "base": "sprites/DefineSprite_260",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 242,
+      "max_bbox_height": 24,
+      "max_bbox_width": 14
+    },
+    {
+      "base": "sprites/DefineSprite_262",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 3,
+      "max_bbox_height": 3,
+      "max_bbox_width": 1
+    },
+    {
+      "base": "sprites/DefineSprite_263",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 218,
+      "max_bbox_height": 24,
+      "max_bbox_width": 32
+    },
+    {
+      "base": "sprites/DefineSprite_265",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 62,
+      "max_bbox_height": 10,
+      "max_bbox_width": 27
+    },
+    {
+      "base": "sprites/DefineSprite_266",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1039,
+      "max_bbox_height": 38,
+      "max_bbox_width": 37
+    },
+    {
+      "base": "sprites/DefineSprite_267",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 2477,
+      "max_bbox_height": 74,
+      "max_bbox_width": 53
+    },
+    {
+      "base": "sprites/DefineSprite_269",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1279,
+      "max_bbox_height": 43,
+      "max_bbox_width": 48
+    },
+    {
+      "base": "sprites/DefineSprite_272",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 803,
+      "max_bbox_height": 34,
+      "max_bbox_width": 56
+    },
+    {
+      "base": "sprites/DefineSprite_275",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 296,
+      "max_bbox_height": 37,
+      "max_bbox_width": 13
+    },
+    {
+      "base": "sprites/DefineSprite_276",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 482,
+      "max_bbox_height": 44,
+      "max_bbox_width": 14
+    },
+    {
+      "base": "sprites/DefineSprite_277",
+      "group": "building",
+      "tag": "commercial",
+      "max_opaque_pixels": 2435,
+      "max_bbox_height": 61,
+      "max_bbox_width": 75
+    },
+    {
+      "base": "sprites/DefineSprite_280",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 164,
+      "max_bbox_height": 18,
+      "max_bbox_width": 22
+    },
+    {
+      "base": "sprites/DefineSprite_281",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 376,
+      "max_bbox_height": 23,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_284",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 376,
+      "max_bbox_height": 20,
+      "max_bbox_width": 56
+    },
+    {
+      "base": "sprites/DefineSprite_285",
+      "group": "building",
+      "tag": "commercial",
+      "max_opaque_pixels": 2208,
+      "max_bbox_height": 49,
+      "max_bbox_width": 76
+    },
+    {
+      "base": "sprites/DefineSprite_286",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 235,
+      "max_bbox_height": 26,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_289",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 218,
+      "max_bbox_height": 27,
+      "max_bbox_width": 16
+    },
+    {
+      "base": "sprites/DefineSprite_291",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 506,
+      "max_bbox_height": 28,
+      "max_bbox_width": 28
+    },
+    {
+      "base": "sprites/DefineSprite_293",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 128,
+      "max_bbox_height": 18,
+      "max_bbox_width": 13
+    },
+    {
+      "base": "sprites/DefineSprite_294",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 854,
+      "max_bbox_height": 35,
+      "max_bbox_width": 33
+    },
+    {
+      "base": "sprites/DefineSprite_295",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1061,
+      "max_bbox_height": 41,
+      "max_bbox_width": 49
+    },
+    {
+      "base": "sprites/DefineSprite_298",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1111,
+      "max_bbox_height": 79,
+      "max_bbox_width": 32
+    },
+    {
+      "base": "sprites/DefineSprite_299",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2174,
+      "max_bbox_height": 87,
+      "max_bbox_width": 46
+    },
+    {
+      "base": "sprites/DefineSprite_3",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 864,
+      "max_bbox_height": 9,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_307",
+      "group": "other",
+      "tag": "tree",
+      "max_opaque_pixels": 945,
+      "max_bbox_height": 39,
+      "max_bbox_width": 43
+    },
+    {
+      "base": "sprites/DefineSprite_310",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 3,
+      "max_bbox_height": 3,
+      "max_bbox_width": 2
+    },
+    {
+      "base": "sprites/DefineSprite_312",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 264,
+      "max_bbox_height": 28,
+      "max_bbox_width": 32
+    },
+    {
+      "base": "sprites/DefineSprite_316",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 86,
+      "max_bbox_height": 17,
+      "max_bbox_width": 10
+    },
+    {
+      "base": "sprites/DefineSprite_317",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 163,
+      "max_bbox_height": 20,
+      "max_bbox_width": 13
+    },
+    {
+      "base": "sprites/DefineSprite_318",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 40,
+      "max_bbox_height": 21,
+      "max_bbox_width": 2
+    },
+    {
+      "base": "sprites/DefineSprite_320",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1749,
+      "max_bbox_height": 56,
+      "max_bbox_width": 50
+    },
+    {
+      "base": "sprites/DefineSprite_323",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 29,
+      "max_bbox_height": 6,
+      "max_bbox_width": 6
+    },
+    {
+      "base": "sprites/DefineSprite_326",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 358,
+      "max_bbox_height": 20,
+      "max_bbox_width": 41
+    },
+    {
+      "base": "sprites/DefineSprite_328",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 732,
+      "max_bbox_height": 29,
+      "max_bbox_width": 48
+    },
+    {
+      "base": "sprites/DefineSprite_331",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 16,
+      "max_bbox_height": 6,
+      "max_bbox_width": 4
+    },
+    {
+      "base": "sprites/DefineSprite_334",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 195,
+      "max_bbox_height": 18,
+      "max_bbox_width": 26
+    },
+    {
+      "base": "sprites/DefineSprite_339",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 4,
+      "max_bbox_height": 3,
+      "max_bbox_width": 2
+    },
+    {
+      "base": "sprites/DefineSprite_34",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 379,
+      "max_bbox_height": 21,
+      "max_bbox_width": 41
+    },
+    {
+      "base": "sprites/DefineSprite_349",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 99,
+      "max_bbox_height": 13,
+      "max_bbox_width": 19
+    },
+    {
+      "base": "sprites/DefineSprite_354",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 68,
+      "max_bbox_height": 16,
+      "max_bbox_width": 12
+    },
+    {
+      "base": "sprites/DefineSprite_355",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 173,
+      "max_bbox_height": 20,
+      "max_bbox_width": 15
+    },
+    {
+      "base": "sprites/DefineSprite_358",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1145,
+      "max_bbox_height": 39,
+      "max_bbox_width": 50
+    },
+    {
+      "base": "sprites/DefineSprite_361",
+      "group": "other",
+      "tag": "tree",
+      "max_opaque_pixels": 104,
+      "max_bbox_height": 23,
+      "max_bbox_width": 16
+    },
+    {
+      "base": "sprites/DefineSprite_365",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 19,
+      "max_bbox_height": 6,
+      "max_bbox_width": 15
+    },
+    {
+      "base": "sprites/DefineSprite_368",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 14,
+      "max_bbox_height": 5,
+      "max_bbox_width": 12
+    },
+    {
+      "base": "sprites/DefineSprite_374",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 411,
+      "max_bbox_height": 28,
+      "max_bbox_width": 41
+    },
+    {
+      "base": "sprites/DefineSprite_378",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 20,
+      "max_bbox_height": 8,
+      "max_bbox_width": 7
+    },
+    {
+      "base": "sprites/DefineSprite_380",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 31,
+      "max_bbox_height": 9,
+      "max_bbox_width": 4
+    },
+    {
+      "base": "sprites/DefineSprite_381",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 580,
+      "max_bbox_height": 30,
+      "max_bbox_width": 44
+    },
+    {
+      "base": "sprites/DefineSprite_382",
+      "group": "other",
+      "tag": "tree",
+      "max_opaque_pixels": 344,
+      "max_bbox_height": 26,
+      "max_bbox_width": 22
+    },
+    {
+      "base": "sprites/DefineSprite_388",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2325,
+      "max_bbox_height": 48,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_391",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 267,
+      "max_bbox_height": 21,
+      "max_bbox_width": 17
+    },
+    {
+      "base": "sprites/DefineSprite_393",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 283,
+      "max_bbox_height": 26,
+      "max_bbox_width": 28
+    },
+    {
+      "base": "sprites/DefineSprite_395",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 672,
+      "max_bbox_height": 36,
+      "max_bbox_width": 43
+    },
+    {
+      "base": "sprites/DefineSprite_396",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2325,
+      "max_bbox_height": 48,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_399",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2419,
+      "max_bbox_height": 49,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_401",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2199,
+      "max_bbox_height": 47,
+      "max_bbox_width": 92
+    },
+    {
+      "base": "sprites/DefineSprite_405",
+      "group": "building",
+      "tag": "commercial",
+      "max_opaque_pixels": 4119,
+      "max_bbox_height": 66,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_409",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1081,
+      "max_bbox_height": 47,
+      "max_bbox_width": 85
+    },
+    {
+      "base": "sprites/DefineSprite_410_mcObs",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2513,
+      "max_bbox_height": 59,
+      "max_bbox_width": 85
+    },
+    {
+      "base": "sprites/DefineSprite_411_mcHouse1",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2048,
+      "max_bbox_height": 53,
+      "max_bbox_width": 83
+    },
+    {
+      "base": "sprites/DefineSprite_415",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1527,
+      "max_bbox_height": 91,
+      "max_bbox_width": 21
+    },
+    {
+      "base": "sprites/DefineSprite_418",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 23,
+      "max_bbox_height": 8,
+      "max_bbox_width": 9
+    },
+    {
+      "base": "sprites/DefineSprite_426",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 607,
+      "max_bbox_height": 81,
+      "max_bbox_width": 19
+    },
+    {
+      "base": "sprites/DefineSprite_427",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 597,
+      "max_bbox_height": 84,
+      "max_bbox_width": 12
+    },
+    {
+      "base": "sprites/DefineSprite_428",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1503,
+      "max_bbox_height": 91,
+      "max_bbox_width": 21
+    },
+    {
+      "base": "sprites/DefineSprite_432",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 498,
+      "max_bbox_height": 56,
+      "max_bbox_width": 28
+    },
+    {
+      "base": "sprites/DefineSprite_435",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 295,
+      "max_bbox_height": 61,
+      "max_bbox_width": 35
+    },
+    {
+      "base": "sprites/DefineSprite_436",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 536,
+      "max_bbox_height": 81,
+      "max_bbox_width": 32
+    },
+    {
+      "base": "sprites/DefineSprite_439",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 66,
+      "max_bbox_height": 18,
+      "max_bbox_width": 18
+    },
+    {
+      "base": "sprites/DefineSprite_440",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 87,
+      "max_bbox_height": 19,
+      "max_bbox_width": 19
+    },
+    {
+      "base": "sprites/DefineSprite_441",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2989,
+      "max_bbox_height": 89,
+      "max_bbox_width": 40
+    },
+    {
+      "base": "sprites/DefineSprite_448",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 130,
+      "max_bbox_height": 24,
+      "max_bbox_width": 7
+    },
+    {
+      "base": "sprites/DefineSprite_450",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 130,
+      "max_bbox_height": 24,
+      "max_bbox_width": 7
+    },
+    {
+      "base": "sprites/DefineSprite_451",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 526,
+      "max_bbox_height": 30,
+      "max_bbox_width": 38
+    },
+    {
+      "base": "sprites/DefineSprite_453",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 229,
+      "max_bbox_height": 90,
+      "max_bbox_width": 15
+    },
+    {
+      "base": "sprites/DefineSprite_455",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 180,
+      "max_bbox_height": 34,
+      "max_bbox_width": 10
+    },
+    {
+      "base": "sprites/DefineSprite_456",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1448,
+      "max_bbox_height": 92,
+      "max_bbox_width": 25
+    },
+    {
+      "base": "sprites/DefineSprite_462",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 486,
+      "max_bbox_height": 73,
+      "max_bbox_width": 28
+    },
+    {
+      "base": "sprites/DefineSprite_467",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 328,
+      "max_bbox_height": 85,
+      "max_bbox_width": 5
+    },
+    {
+      "base": "sprites/DefineSprite_468",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 718,
+      "max_bbox_height": 88,
+      "max_bbox_width": 15
+    },
+    {
+      "base": "sprites/DefineSprite_469",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2736,
+      "max_bbox_height": 85,
+      "max_bbox_width": 45
+    },
+    {
+      "base": "sprites/DefineSprite_475",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 702,
+      "max_bbox_height": 77,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_476",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1088,
+      "max_bbox_height": 96,
+      "max_bbox_width": 17
+    },
+    {
+      "base": "sprites/DefineSprite_477",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2320,
+      "max_bbox_height": 89,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_481",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 1708,
+      "max_bbox_height": 91,
+      "max_bbox_width": 24
+    },
+    {
+      "base": "sprites/DefineSprite_485",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 2,
+      "max_bbox_height": 2,
+      "max_bbox_width": 1
+    },
+    {
+      "base": "sprites/DefineSprite_487",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 798,
+      "max_bbox_height": 35,
+      "max_bbox_width": 72
+    },
+    {
+      "base": "sprites/DefineSprite_488",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 5923,
+      "max_bbox_height": 89,
+      "max_bbox_width": 89
+    },
+    {
+      "base": "sprites/DefineSprite_491",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 768,
+      "max_bbox_height": 47,
+      "max_bbox_width": 78
+    },
+    {
+      "base": "sprites/DefineSprite_492",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 4330,
+      "max_bbox_height": 90,
+      "max_bbox_width": 73
+    },
+    {
+      "base": "sprites/DefineSprite_493",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 1646,
+      "max_bbox_height": 91,
+      "max_bbox_width": 46
+    },
+    {
+      "base": "sprites/DefineSprite_496",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 4330,
+      "max_bbox_height": 90,
+      "max_bbox_width": 73
+    },
+    {
+      "base": "sprites/DefineSprite_499",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1139,
+      "max_bbox_height": 48,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_5",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 0,
+      "max_bbox_height": 5,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_500",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 4364,
+      "max_bbox_height": 90,
+      "max_bbox_width": 73
+    },
+    {
+      "base": "sprites/DefineSprite_501",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2157,
+      "max_bbox_height": 91,
+      "max_bbox_width": 57
+    },
+    {
+      "base": "sprites/DefineSprite_503",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2234,
+      "max_bbox_height": 48,
+      "max_bbox_width": 89
+    },
+    {
+      "base": "sprites/DefineSprite_507",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 463,
+      "max_bbox_height": 22,
+      "max_bbox_width": 38
+    },
+    {
+      "base": "sprites/DefineSprite_510",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1009,
+      "max_bbox_height": 34,
+      "max_bbox_width": 64
+    },
+    {
+      "base": "sprites/DefineSprite_514",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 108,
+      "max_bbox_height": 20,
+      "max_bbox_width": 55
+    },
+    {
+      "base": "sprites/DefineSprite_516",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 381,
+      "max_bbox_height": 49,
+      "max_bbox_width": 92
+    },
+    {
+      "base": "sprites/DefineSprite_518",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 376,
+      "max_bbox_height": 49,
+      "max_bbox_width": 92
+    },
+    {
+      "base": "sprites/DefineSprite_520",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 378,
+      "max_bbox_height": 49,
+      "max_bbox_width": 92
+    },
+    {
+      "base": "sprites/DefineSprite_521",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1984,
+      "max_bbox_height": 46,
+      "max_bbox_width": 87
+    },
+    {
+      "base": "sprites/DefineSprite_522_mcHouse2",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1483,
+      "max_bbox_height": 85,
+      "max_bbox_width": 46
+    },
+    {
+      "base": "sprites/DefineSprite_527",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 202,
+      "max_bbox_height": 96,
+      "max_bbox_width": 9
+    },
+    {
+      "base": "sprites/DefineSprite_531",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 859,
+      "max_bbox_height": 66,
+      "max_bbox_width": 48
+    },
+    {
+      "base": "sprites/DefineSprite_532",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 931,
+      "max_bbox_height": 80,
+      "max_bbox_width": 24
+    },
+    {
+      "base": "sprites/DefineSprite_534",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2258,
+      "max_bbox_height": 80,
+      "max_bbox_width": 52
+    },
+    {
+      "base": "sprites/DefineSprite_538",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 187,
+      "max_bbox_height": 79,
+      "max_bbox_width": 15
+    },
+    {
+      "base": "sprites/DefineSprite_539",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 302,
+      "max_bbox_height": 87,
+      "max_bbox_width": 9
+    },
+    {
+      "base": "sprites/DefineSprite_541",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2068,
+      "max_bbox_height": 96,
+      "max_bbox_width": 40
+    },
+    {
+      "base": "sprites/DefineSprite_544",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 143,
+      "max_bbox_height": 33,
+      "max_bbox_width": 27
+    },
+    {
+      "base": "sprites/DefineSprite_545",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 419,
+      "max_bbox_height": 36,
+      "max_bbox_width": 32
+    },
+    {
+      "base": "sprites/DefineSprite_548",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 532,
+      "max_bbox_height": 46,
+      "max_bbox_width": 56
+    },
+    {
+      "base": "sprites/DefineSprite_551",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 337,
+      "max_bbox_height": 32,
+      "max_bbox_width": 45
+    },
+    {
+      "base": "sprites/DefineSprite_554",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1405,
+      "max_bbox_height": 62,
+      "max_bbox_width": 58
+    },
+    {
+      "base": "sprites/DefineSprite_557",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 606,
+      "max_bbox_height": 40,
+      "max_bbox_width": 42
+    },
+    {
+      "base": "sprites/DefineSprite_559",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 140,
+      "max_bbox_height": 19,
+      "max_bbox_width": 12
+    },
+    {
+      "base": "sprites/DefineSprite_561",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 2394,
+      "max_bbox_height": 93,
+      "max_bbox_width": 37
+    },
+    {
+      "base": "sprites/DefineSprite_566",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1319,
+      "max_bbox_height": 90,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_569",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 216,
+      "max_bbox_height": 43,
+      "max_bbox_width": 51
+    },
+    {
+      "base": "sprites/DefineSprite_572",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 216,
+      "max_bbox_height": 59,
+      "max_bbox_width": 54
+    },
+    {
+      "base": "sprites/DefineSprite_575",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 405,
+      "max_bbox_height": 31,
+      "max_bbox_width": 18
+    },
+    {
+      "base": "sprites/DefineSprite_577",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 373,
+      "max_bbox_height": 24,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_579",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 254,
+      "max_bbox_height": 22,
+      "max_bbox_width": 18
+    },
+    {
+      "base": "sprites/DefineSprite_582",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 182,
+      "max_bbox_height": 94,
+      "max_bbox_width": 19
+    },
+    {
+      "base": "sprites/DefineSprite_584",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 508,
+      "max_bbox_height": 25,
+      "max_bbox_width": 26
+    },
+    {
+      "base": "sprites/DefineSprite_586",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 508,
+      "max_bbox_height": 25,
+      "max_bbox_width": 26
+    },
+    {
+      "base": "sprites/DefineSprite_588",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 775,
+      "max_bbox_height": 56,
+      "max_bbox_width": 27
+    },
+    {
+      "base": "sprites/DefineSprite_592",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 7885,
+      "max_bbox_height": 84,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_595",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 477,
+      "max_bbox_height": 96,
+      "max_bbox_width": 30
+    },
+    {
+      "base": "sprites/DefineSprite_597",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2217,
+      "max_bbox_height": 80,
+      "max_bbox_width": 61
+    },
+    {
+      "base": "sprites/DefineSprite_598",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2062,
+      "max_bbox_height": 89,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_610",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 3314,
+      "max_bbox_height": 96,
+      "max_bbox_width": 40
+    },
+    {
+      "base": "sprites/DefineSprite_613",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 533,
+      "max_bbox_height": 50,
+      "max_bbox_width": 60
+    },
+    {
+      "base": "sprites/DefineSprite_616",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 359,
+      "max_bbox_height": 18,
+      "max_bbox_width": 36
+    },
+    {
+      "base": "sprites/DefineSprite_619",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1041,
+      "max_bbox_height": 85,
+      "max_bbox_width": 35
+    },
+    {
+      "base": "sprites/DefineSprite_620",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1048,
+      "max_bbox_height": 88,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_622",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 89,
+      "max_bbox_height": 87,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_626",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 143,
+      "max_bbox_height": 19,
+      "max_bbox_width": 39
+    },
+    {
+      "base": "sprites/DefineSprite_627",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 359,
+      "max_bbox_height": 24,
+      "max_bbox_width": 43
+    },
+    {
+      "base": "sprites/DefineSprite_631",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 492,
+      "max_bbox_height": 46,
+      "max_bbox_width": 77
+    },
+    {
+      "base": "sprites/DefineSprite_633",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2832,
+      "max_bbox_height": 93,
+      "max_bbox_width": 40
+    },
+    {
+      "base": "sprites/DefineSprite_637",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 119,
+      "max_bbox_height": 17,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_639",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 144,
+      "max_bbox_height": 20,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_642",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2355,
+      "max_bbox_height": 96,
+      "max_bbox_width": 41
+    },
+    {
+      "base": "sprites/DefineSprite_646",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 136,
+      "max_bbox_height": 96,
+      "max_bbox_width": 27
+    },
+    {
+      "base": "sprites/DefineSprite_648",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1105,
+      "max_bbox_height": 96,
+      "max_bbox_width": 17
+    },
+    {
+      "base": "sprites/DefineSprite_651",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 131,
+      "max_bbox_height": 66,
+      "max_bbox_width": 47
+    },
+    {
+      "base": "sprites/DefineSprite_652",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 691,
+      "max_bbox_height": 85,
+      "max_bbox_width": 21
+    },
+    {
+      "base": "sprites/DefineSprite_658",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 130,
+      "max_bbox_height": 40,
+      "max_bbox_width": 12
+    },
+    {
+      "base": "sprites/DefineSprite_661",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 287,
+      "max_bbox_height": 72,
+      "max_bbox_width": 13
+    },
+    {
+      "base": "sprites/DefineSprite_663",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 1709,
+      "max_bbox_height": 94,
+      "max_bbox_width": 35
+    },
+    {
+      "base": "sprites/DefineSprite_676",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 656,
+      "max_bbox_height": 34,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_677",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1048,
+      "max_bbox_height": 88,
+      "max_bbox_width": 20
+    },
+    {
+      "base": "sprites/DefineSprite_679",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 689,
+      "max_bbox_height": 34,
+      "max_bbox_width": 29
+    },
+    {
+      "base": "sprites/DefineSprite_681",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 279,
+      "max_bbox_height": 30,
+      "max_bbox_width": 25
+    },
+    {
+      "base": "sprites/DefineSprite_683",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 325,
+      "max_bbox_height": 43,
+      "max_bbox_width": 54
+    },
+    {
+      "base": "sprites/DefineSprite_687",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 49,
+      "max_bbox_height": 32,
+      "max_bbox_width": 14
+    },
+    {
+      "base": "sprites/DefineSprite_688",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 863,
+      "max_bbox_height": 36,
+      "max_bbox_width": 36
+    },
+    {
+      "base": "sprites/DefineSprite_690",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 2153,
+      "max_bbox_height": 94,
+      "max_bbox_width": 39
+    },
+    {
+      "base": "sprites/DefineSprite_692",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 1736,
+      "max_bbox_height": 92,
+      "max_bbox_width": 43
+    },
+    {
+      "base": "sprites/DefineSprite_693_mcHouse3",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1763,
+      "max_bbox_height": 79,
+      "max_bbox_width": 43
+    },
+    {
+      "base": "sprites/DefineSprite_696",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 32,
+      "max_bbox_height": 20,
+      "max_bbox_width": 8
+    },
+    {
+      "base": "sprites/DefineSprite_698",
+      "group": "character",
+      "tag": "exclude",
+      "max_opaque_pixels": 6,
+      "max_bbox_height": 7,
+      "max_bbox_width": 3
+    },
+    {
+      "base": "sprites/DefineSprite_699",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 66,
+      "max_bbox_height": 41,
+      "max_bbox_width": 75
+    },
+    {
+      "base": "sprites/DefineSprite_7",
+      "group": "other",
+      "tag": "water",
+      "max_opaque_pixels": 1940,
+      "max_bbox_height": 96,
+      "max_bbox_width": 47
+    },
+    {
+      "base": "sprites/DefineSprite_702_mcRoad",
+      "group": "other",
+      "tag": "road",
+      "max_opaque_pixels": 267,
+      "max_bbox_height": 28,
+      "max_bbox_width": 53
+    },
+    {
+      "base": "sprites/DefineSprite_705",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1554,
+      "max_bbox_height": 48,
+      "max_bbox_width": 95
+    },
+    {
+      "base": "sprites/DefineSprite_707_mcDalle",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 3080,
+      "max_bbox_height": 56,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_708_mcHouse",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1504,
+      "max_bbox_height": 71,
+      "max_bbox_width": 43
+    },
+    {
+      "base": "sprites/DefineSprite_710_mcTest",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 144,
+      "max_bbox_height": 12,
+      "max_bbox_width": 24
+    },
+    {
+      "base": "sprites/DefineSprite_712",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 6144,
+      "max_bbox_height": 64,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_713_mcBg",
+      "group": "ui",
+      "tag": "exclude",
+      "max_opaque_pixels": 6144,
+      "max_bbox_height": 64,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_719",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 5810,
+      "max_bbox_height": 95,
+      "max_bbox_width": 76
+    },
+    {
+      "base": "sprites/DefineSprite_721",
+      "group": "building",
+      "tag": "residential",
+      "max_opaque_pixels": 1602,
+      "max_bbox_height": 50,
+      "max_bbox_width": 39
+    },
+    {
+      "base": "sprites/DefineSprite_724",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 828,
+      "max_bbox_height": 50,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_727",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 764,
+      "max_bbox_height": 43,
+      "max_bbox_width": 82
+    },
+    {
+      "base": "sprites/DefineSprite_729",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 285,
+      "max_bbox_height": 41,
+      "max_bbox_width": 45
+    },
+    {
+      "base": "sprites/DefineSprite_732",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 969,
+      "max_bbox_height": 31,
+      "max_bbox_width": 63
+    },
+    {
+      "base": "sprites/DefineSprite_734",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 155,
+      "max_bbox_height": 27,
+      "max_bbox_width": 63
+    },
+    {
+      "base": "sprites/DefineSprite_735",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 155,
+      "max_bbox_height": 27,
+      "max_bbox_width": 63
+    },
+    {
+      "base": "sprites/DefineSprite_739",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 363,
+      "max_bbox_height": 26,
+      "max_bbox_width": 28
+    },
+    {
+      "base": "sprites/DefineSprite_740",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 124,
+      "max_bbox_height": 51,
+      "max_bbox_width": 83
+    },
+    {
+      "base": "sprites/DefineSprite_743",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 32,
+      "max_bbox_height": 16,
+      "max_bbox_width": 6
+    },
+    {
+      "base": "sprites/DefineSprite_745",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 1748,
+      "max_bbox_height": 48,
+      "max_bbox_width": 96
+    },
+    {
+      "base": "sprites/DefineSprite_747",
+      "group": "building",
+      "tag": "industrial",
+      "max_opaque_pixels": 3778,
+      "max_bbox_height": 62,
+      "max_bbox_width": 91
+    },
+    {
+      "base": "sprites/DefineSprite_78",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 770,
+      "max_bbox_height": 86,
+      "max_bbox_width": 26
+    },
+    {
+      "base": "sprites/DefineSprite_80",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 599,
+      "max_bbox_height": 24,
+      "max_bbox_width": 40
+    },
+    {
+      "base": "sprites/DefineSprite_88",
+      "group": "other",
+      "tag": "exclude",
+      "max_opaque_pixels": 2,
+      "max_bbox_height": 33,
+      "max_bbox_width": 1
+    }
+  ]
+}

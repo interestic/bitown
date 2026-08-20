@@ -39,8 +39,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    environment:
+      BITOWN_ASSETS_DIR: /assets
     volumes:
       - ./api:/app
+      - ./assets:/assets:ro
       - go_pkg:/root/go/pkg
 
 volumes:
