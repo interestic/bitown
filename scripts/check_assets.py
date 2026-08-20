@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+"""
+Step7 quality gate for sprites pipeline artifacts.
+
+Requires pipeline directories (raw/normalized/variants) to exist. When atlas
+artifacts are committed, also validates the atlas PNG, JSON frames, and
+buildings.json catalog tags.
+"""
+
+from pathlib import Path
+import json
+import struct
+import sys
+from typing import NoReturn
+
+ROOT = Path(__file__).resolve().parent.parent
+
+required_dirs = [
+    ROOT / "assets" / "sprites-v1" / "raw",
+    ROOT / "assets" / "sprites-v1" / "normalized",
+    ROOT / "assets" / "sprites-v1" / "variants",
+]
+
+atlas_json = ROOT / "assets" / "sprites-v1" / "atlas" / "sprites_v1_atlas.json"
+buildings_json = ROOT / "assets" / "sprites-v1" / "buildings.json"
+building_allowlist = ROOT / "assets" / "sprites-v1" / "building_bases.allowlist"
+
+MAP_TAGS = {
+    "residential",
+    "industrial",
+    "commercial",
+    "landmark",
+    "road",
+    "tree",
+    "water",
+    "park",
+    "exclude",
+}
+BUILDING_TAGS = {"residential", "industrial", "commercial", "landmark"}
+NON_BUILDING_TAGS = MAP_TAGS - BUILDING_TAGS
+
+# Substrings that must never appear in the map building pool.
+# Keep in sync with api/internal/render/atlas.go buildingDenySubstr and
+# scripts/generate_buildings_manifest.py UI_NAME_PATTERNS.
+# Empty mcHouse* clips stay out via sprite_tag_overrides.json (not deny),
+# because real house folders also contain "mcHouse" in the Flash name.
+BUILDING_DENY_SUBSTR = (
+    "mcLoading",
+    "mcAnti",
+    "mcAnalog",
+    "mcStat",
+    "mcCompt",
+    "mcObs",
+    "mcTest",
+    "mcBg",
+    "mcDalle",
+    "mcRoad",
+    "brushWood",
+    "StatPanel",
+    "StatusBar",
+)
+
+
+def fail(msg: str) -> NoReturn:
+    print(f"[FAIL] {msg}")
+    sys.exit(1)
+
+
+def png_size(path: Path) -> tuple[int, int]:
+    with path.open("rb") as f:
+        if f.read(8) != b"\x89PNG\r\n\x1a\n":
+            fail(f"not a PNG: {path}")
+        length, chunk = struct.unpack(">I4s", f.read(8))
+        if chunk != b"IHDR" or length < 8:
+            fail(f"PNG missing IHDR: {path}")
+        width, height = struct.unpack(">II", f.read(8))
+        return width, height
+
+
+def validate_atlas_frames(data: dict, png_path: Path) -> None:
+    frames = data["frames"]
+    png_w, png_h = png_size(png_path)
+    square32 = 0
+    for key, frame in frames.items():
+        if not isinstance(frame, dict):
+            fail(f"frame {key} is not an object")
+        for field in ("x", "y", "w", "h", "anchor_x", "anchor_y"):
+            value = frame.get(field)
+            if not isinstance(value, int):
+                fail(f"frame {key} missing int {field}")
+        x, y, w, h = frame["x"], frame["y"], frame["w"], frame["h"]
+        ax, ay = frame["anchor_x"], frame["anchor_y"]
+        if w <= 0 or h <= 0:
+            fail(f"frame {key} has non-positive size")
+        if x < 0 or y < 0 or x + w > png_w or y + h > png_h:
+            fail(f"frame {key} exceeds atlas png {png_w}x{png_h}")
+        # Foot anchors map the normalized canvas foot into trimmed-frame space
+        # and may sit outside the opaque bbox (asymmetric sprites).
+        if ax < -96 or ay < -96 or ax > w + 96 or ay > h + 96:
+            fail(f"frame {key} anchor implausibly far from frame")
+        if w == 32 and h == 32:
+            square32 += 1
+    if len(frames) > 0 and square32 == len(frames):
+        fail("atlas frames are still all 32x32; expected trimmed native sizes")
+    print(f"[OK] atlas bounds {png_w}x{png_h}; native frames {len(frames) - square32}/{len(frames)}")
+
+
+def validate_buildings_manifest(data: dict) -> None:
+    version = data.get("version")
+    if not isinstance(version, int) or version < 2:
+        fail("buildings.json version must be integer >= 2")
+
+    bases = data.get("building_bases") or []
+    if not isinstance(bases, list) or not bases:
+        fail("buildings.json has no building_bases")
+    if bases != sorted(set(bases)):
+        fail("building_bases must be unique and sorted")
+
+    by_tag = data.get("bases_by_tag") or {}
+    if not isinstance(by_tag, dict):
+        fail("buildings.json missing bases_by_tag")
+    missing_tags = MAP_TAGS - set(by_tag)
+    if missing_tags:
+        fail(f"bases_by_tag missing keys: {sorted(missing_tags)}")
+
+    counts = data.get("counts") or {}
+    tag_counts = counts.get("by_tag") or {}
+    for tag in sorted(MAP_TAGS):
+        tagged = by_tag.get(tag) or []
+        if tagged != sorted(set(tagged)):
+            fail(f"bases_by_tag[{tag}] must be unique and sorted")
+        if tag_counts.get(tag) != len(tagged):
+            fail(f"counts.by_tag[{tag}] != len(bases_by_tag[{tag}])")
+
+    expected_buildings = []
+    for tag in ("residential", "industrial", "commercial", "landmark"):
+        expected_buildings.extend(by_tag.get(tag) or [])
+    expected_buildings = sorted(expected_buildings)
+    if bases != expected_buildings:
+        fail("building_bases must equal union of residential/industrial/commercial/landmark")
+    if counts.get("building") != len(bases):
+        fail("counts.building != len(building_bases)")
+
+    entries = data.get("entries") or []
+    if not isinstance(entries, list) or not entries:
+        fail("buildings.json has no entries")
+    seen = set()
+    for entry in entries:
+        base = entry.get("base")
+        tag = entry.get("tag")
+        group = entry.get("group")
+        if not base or tag not in MAP_TAGS:
+            fail(f"invalid catalog entry: {entry}")
+        if group not in {"building", "character", "ui", "other"}:
+            fail(f"invalid group for {base}: {group}")
+        if base in seen:
+            fail(f"duplicate catalog entry {base}")
+        seen.add(base)
+        tagged = by_tag.get(tag) or []
+        if base not in tagged:
+            fail(f"{base} tag {tag} missing from bases_by_tag[{tag}]")
+        if tag in BUILDING_TAGS and group != "building":
+            fail(f"{base} has building tag {tag} but group {group}")
+        if tag in BUILDING_TAGS and base not in bases:
+            fail(f"{base} tagged {tag} missing from building_bases")
+        if tag in NON_BUILDING_TAGS and base in bases:
+            fail(f"{base} tagged {tag} must not be in building_bases")
+
+    for base in bases:
+        lowered = base
+        for token in BUILDING_DENY_SUBSTR:
+            if token.lower() in lowered.lower():
+                fail(f"building_bases contains denied sprite {base} ({token})")
+
+    for tag in NON_BUILDING_TAGS:
+        for base in by_tag.get(tag) or []:
+            if base in bases:
+                fail(f"{base} tagged {tag} must not be in building_bases")
+
+    if not building_allowlist.exists():
+        fail(f"missing building allowlist snapshot: {building_allowlist}")
+    snapshot = [
+        line.strip()
+        for line in building_allowlist.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    if snapshot != bases:
+        fail("building_bases.allowlist must match buildings.json building_bases exactly")
+
+    print(f"[OK] building bases: {len(bases)}")
+    print(f"[OK] building allowlist snapshot: {len(snapshot)}")
+    print(f"[OK] catalog tags: {json.dumps(tag_counts, sort_keys=True)}")
+
+
+def validate_building_frames_present(bases: list, frames: dict) -> None:
+    for base in bases:
+        prefix = f"{base}/"
+        if not any(
+            isinstance(key, str) and key.startswith(prefix) and key.endswith("_v00.png")
+            for key in frames
+        ):
+            fail(f"building base {base} has no *_v00.png frame in atlas")
+    print(f"[OK] building frames present for {len(bases)} bases")
+
+
+def main() -> None:
+    atlas_present = atlas_json.exists()
+    for d in required_dirs:
+        if not d.exists():
+            if atlas_present:
+                print(f"[WARN] optional pipeline dir missing: {d}")
+            else:
+                fail(f"missing directory: {d}")
+
+    if atlas_present:
+        data = json.loads(atlas_json.read_text(encoding="utf-8"))
+        if "frames" not in data or not isinstance(data["frames"], dict):
+            fail("atlas json has no valid frames object")
+        print(f"[OK] atlas frames: {len(data['frames'])}")
+        image_name = Path(str(data.get("image") or "sprites_v1_atlas.png")).name
+        atlas_png = atlas_json.parent / image_name
+        if not atlas_png.exists():
+            fail(f"atlas png missing: {atlas_png}")
+        print(f"[OK] atlas png: {atlas_png.name}")
+        validate_atlas_frames(data, atlas_png)
+        if not buildings_json.exists():
+            fail("buildings.json missing (run: python3 scripts/generate_buildings_manifest.py)")
+        building_data = json.loads(buildings_json.read_text(encoding="utf-8"))
+        validate_buildings_manifest(building_data)
+        validate_building_frames_present(building_data.get("building_bases") or [], data["frames"])
+    else:
+        print("[WARN] atlas json not found (run step5 when assets are ready)")
+
+    print("[OK] asset pipeline quality gate passed")
+
+
+if __name__ == "__main__":
+    main()

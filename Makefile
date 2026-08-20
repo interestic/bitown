@@ -1,5 +1,5 @@
 .PHONY: up down logs logs-api ps db redis migrate build test lint seed \
-        health city-create city-get city-support badge
+        health city-create city-get city-support badge assets-check
 
 API_URL ?= http://localhost:8080
 TEST_SLUG ?= testcity
@@ -73,6 +73,9 @@ city-support:
 
 badge:
 	curl -s $(API_URL)/badge/$(TEST_SLUG).svg
+
+assets-check:
+	python3 scripts/check_assets.py
 
 # Guard: prevents data-mutating dev commands from running against non-local URLs.
 _guard-local:

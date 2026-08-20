@@ -1,6 +1,7 @@
 # Go
 api/bitown-api
 api/tmp/
+api/coverage.out
 
 # Environment
 .env
@@ -21,6 +22,12 @@ web/out/
 
 # OS
 .DS_Store
+
+# Sprites pipeline intermediates (atlas/ is committed for map rendering)
+assets/sprites-v1/raw/
+assets/sprites-v1/normalized/
+assets/sprites-v1/variants/
+assets/sprites-v1/source/
 
 # Assets v2 (Phase 3 private only)
 assets/sprites-v2/

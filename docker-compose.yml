@@ -39,8 +39,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    environment:
+      BITOWN_ASSETS_DIR: /assets
+      DEBUG_MODE: ${DEBUG_MODE:-false}
     volumes:
       - ./api:/app
+      - ./assets:/assets:ro
       - go_pkg:/root/go/pkg
 
 volumes:

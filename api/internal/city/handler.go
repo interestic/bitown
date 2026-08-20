@@ -15,10 +15,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/interestic/bitown/internal/citycore"
 	"github.com/interestic/bitown/internal/middleware"
+	"github.com/interestic/bitown/internal/render"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/redis/go-redis/v9"
 )
+
+type dbPool interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
 
 // slugRe requires 2-40 chars, lowercase alphanumeric and hyphens,
 // with no leading or trailing hyphens.
@@ -26,12 +33,17 @@ import (
 var slugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$`)
 
 type Handler struct {
-	db       *pgxpool.Pool
+	db       dbPool
 	rdb      *redis.Client
 	saltSeed string
 }
 
-func NewHandler(db *pgxpool.Pool, rdb *redis.Client, saltSeed string) *Handler {
+type debugSupportLog struct {
+	Sector    string    `json:"sector"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func NewHandler(db dbPool, rdb *redis.Client, saltSeed string) *Handler {
 	return &Handler{db: db, rdb: rdb, saltSeed: saltSeed}
 }
 
@@ -98,6 +110,110 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(city)
+}
+
+// GET /api/debug/cities/{slug}
+func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	ctx := r.Context()
+
+	city, err := h.getCity(ctx, slug)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			http.Error(w, "city not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	todayBySector := map[string]int{
+		citycore.SectorPop: 0,
+		citycore.SectorInd: 0,
+		citycore.SectorTra: 0,
+		citycore.SectorSec: 0,
+		citycore.SectorEnv: 0,
+		citycore.SectorCom: 0,
+	}
+
+	rows, err := h.db.Query(ctx,
+		`SELECT sector, COUNT(*)::int
+		 FROM visites_log
+		 WHERE city_slug = $1
+		   AND (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date
+		 GROUP BY sector`,
+		slug)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var sector string
+		var cnt int
+		if scanErr := rows.Scan(&sector, &cnt); scanErr != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		todayBySector[sector] = cnt
+	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	logRows, err := h.db.Query(ctx,
+		`SELECT sector, created_at
+		 FROM visites_log
+		 WHERE city_slug = $1
+		 ORDER BY created_at DESC
+		 LIMIT 20`,
+		slug)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	defer logRows.Close()
+
+	recent := make([]debugSupportLog, 0, 20)
+	for logRows.Next() {
+		var item debugSupportLog
+		if scanErr := logRows.Scan(&item.Sector, &item.CreatedAt); scanErr != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		recent = append(recent, item)
+	}
+	if err := logRows.Err(); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	unlocked := make([]string, 0, len(citycore.ValidSectors))
+	for _, sector := range []string{
+		citycore.SectorPop,
+		citycore.SectorInd,
+		citycore.SectorTra,
+		citycore.SectorSec,
+		citycore.SectorEnv,
+		citycore.SectorCom,
+	} {
+		if citycore.IsUnlocked(city, sector) {
+			unlocked = append(unlocked, sector)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"city":                  city,
+		"unlocked_sectors":      unlocked,
+		"today_support_by_kind": todayBySector,
+		"recent_support_logs":   recent,
+		"debug": map[string]any{
+			"utc_date": time.Now().UTC().Format("2006-01-02"),
+		},
+	})
 }
 
 // POST /api/cities/{slug}/support
@@ -255,6 +371,48 @@ func (h *Handler) Badge(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", "public, max-age=7200")
 	_ = badgeTmpl.Execute(w, city)
+}
+
+// GET /api/cities/{slug}/map.png
+func (h *Handler) MapPNG(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	city, err := h.getCity(r.Context(), slug)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			http.Error(w, "city not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	etag, err := render.MapEntityTag(city)
+	if err != nil {
+		http.Error(w, "failed to render map", http.StatusInternalServerError)
+		return
+	}
+	if render.MatchIfNoneMatch(r.Header.Get("If-None-Match"), etag) {
+		setMapPNGCacheHeaders(w, etag)
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	pngBytes, err := render.BuildCityMapPNG(city)
+	if err != nil {
+		http.Error(w, "failed to render map", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	setMapPNGCacheHeaders(w, etag)
+	_, _ = w.Write(pngBytes)
+}
+
+const mapPNGCacheControl = "public, max-age=300"
+
+func setMapPNGCacheHeaders(w http.ResponseWriter, etag string) {
+	w.Header().Set("Cache-Control", mapPNGCacheControl)
+	w.Header().Set("ETag", etag)
 }
 
 func (h *Handler) getCity(ctx context.Context, slug string) (*citycore.City, error) {

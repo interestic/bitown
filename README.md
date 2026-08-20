@@ -37,11 +37,52 @@ Health: http://localhost:8080/api/health
 
 See [Local Dev wiki](https://github.com/interestic/bitown/wiki/Local-Dev) for full setup instructions.
 
+### Debug mode (optional)
+
+Set `DEBUG_MODE=true` (in `.env` or the shell) to enable a debug endpoint for
+inspecting a specific city. Debug mode is ignored when `ENV=production`.
+
+```bash
+DEBUG_MODE=true make up
+curl -s http://localhost:8080/api/debug/cities/<slug> | jq .
+```
+
+This endpoint returns:
+- current city snapshot
+- unlocked sectors
+- today's support counts by sector (UTC)
+- latest 20 support logs (visitor hash is shortened)
+
+### City map image
+
+You can fetch a generated city map PNG per slug:
+
+```bash
+curl -o map.png http://localhost:8080/api/cities/<slug>/map.png
+```
+
+The renderer uses the sprites-v1 atlas when `assets/sprites-v1/` is available
+(`BITOWN_ASSETS_DIR` in Docker). If the atlas cannot be loaded and
+`BITOWN_ATLAS_REQUIRED` is unset (and `ENV` is not `production`), it falls
+back to a deterministic rectangle map.
+
+- layout hashed from the city slug
+- 20×20 logical grid drawn in 2:1 isometric projection
+- building density linked to `pop` (center-out fill); `ind` / `com` / `env` shift zones and parks
+- sprites are tagged in `assets/sprites-v1/buildings.json` (`counts.by_tag`); the map building pool excludes UI, roads, and empty clips
+- responses send a strong ETag and `Cache-Control: public, max-age=300`
+
 ---
 
 ## Architecture
 
 See [wiki/Architecture](https://github.com/interestic/bitown/wiki/Architecture).
+
+### Art pipeline (Phase 1)
+
+For the Flash-extract + recolor pipeline plan, see:
+
+- `docs/art-pipeline/01_inventory.md` ... `08_ops_runbook.md`
 
 ---
 
