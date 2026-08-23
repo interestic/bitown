@@ -30,8 +30,16 @@ export const ROAD_STYLE_LABELS: Record<RoadStyleFrame, string> = {
   "3": "アスファルト",
 };
 
+function normalizeRoadVariantIndex(variantIndex: number): number {
+  if (!Number.isFinite(variantIndex)) return 0;
+  return Math.min(
+    Math.max(Math.trunc(variantIndex), 0),
+    ROAD_STYLE_FRAMES.length - 1,
+  );
+}
+
 export function roadStyleFrameFromVariant(variantIndex: number): RoadStyleFrame {
-  const idx = Math.min(Math.max(variantIndex, 0), ROAD_STYLE_FRAMES.length - 1);
+  const idx = normalizeRoadVariantIndex(variantIndex);
   return ROAD_STYLE_FRAMES[idx];
 }
 
@@ -43,11 +51,11 @@ export function bigRoadFrameIdForDir(
   dir: RoadDir,
   variantIndex: number,
 ): string {
-  const style = Math.min(Math.max(variantIndex, 0), 2);
+  const style = normalizeRoadVariantIndex(variantIndex);
   return String(dir * 3 + style + 1);
 }
 
 /** 705: 1=土系, 2=アスファルト. */
 export function crossFrameIdFromVariant(variantIndex: number): "1" | "2" {
-  return variantIndex >= 2 ? "2" : "1";
+  return normalizeRoadVariantIndex(variantIndex) >= 2 ? "2" : "1";
 }

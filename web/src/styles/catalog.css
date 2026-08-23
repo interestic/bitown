@@ -8,7 +8,7 @@
   --accent: #0f766e;
   --anchor: #dc2626;
   --font: "IBM Plex Sans", "Hiragino Sans", "Noto Sans JP", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
 }
 
 * {
