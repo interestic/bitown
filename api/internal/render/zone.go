@@ -23,6 +23,24 @@ type lotCell struct {
 	tag    string
 }
 
+func lotTouchesRoad(grid cityGrid, x, y int) bool {
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			if dx == 0 && dy == 0 {
+				continue
+			}
+			nx, ny := x+dx, y+dy
+			if nx < 0 || ny < 0 || nx >= mapCols || ny >= mapRows {
+				continue
+			}
+			if grid[ny][nx] == cellRoad {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
 	lots := make([]lotCell, 0, mapCols*mapRows)
 	cx, cy := mapCols/2, mapRows/2
@@ -36,7 +54,7 @@ func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
 				x:      x,
 				y:      y,
 				dist:   dx*dx + dy*dy,
-				jitter: hashCell(city.Slug, x, y),
+				jitter: hashCell(city.Slug.String(), x, y),
 				tag:    zoneTag(city, x, y),
 			})
 		}
@@ -48,44 +66,86 @@ func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
 		return lots[i].jitter < lots[j].jitter
 	})
 
-	parkN := city.Env / 80
-	if parkN > len(lots)/6 {
-		parkN = len(lots) / 6
-	}
-	baseRate := math.Min(float64(city.Pop)/500.0, 1.0)
-	// Keep roads readable at high population while preserving center-first growth.
-	fillRate := 0.68 * math.Sqrt(baseRate)
-	fillN := int(math.Round(float64(len(lots)-parkN) * fillRate))
-	if fillN < 0 {
-		fillN = 0
+	// Keep a 1-cell curb setback so Flash footprints do not bury arterial road
+	// diamonds (#33). Arterial-only roads leave large interior blocks, so density
+	// still reads Townzzy-like once interiors fill.
+	inner := make([]lotCell, 0, len(lots))
+	curb := make([]lotCell, 0, len(lots)/4)
+	for _, lot := range lots {
+		if lotTouchesRoad(grid, lot.x, lot.y) {
+			curb = append(curb, lot)
+			continue
+		}
+		inner = append(inner, lot)
 	}
 
-	for i := range lots {
-		switch {
-		case i >= len(lots)-parkN:
-			lots[i].use = lotPark
-		case i < fillN:
-			lots[i].use = lotBuilding
-		default:
-			lots[i].use = lotEmpty
+	parkN := city.Env.Int() / 40
+	if parkN > len(inner)/3 {
+		parkN = len(inner) / 3
+	}
+	pop := city.Pop.Int()
+	if pop < popTierPeon {
+		fillPeonIslandLots(inner, pop, parkN)
+	} else {
+		fillRate := math.Min(0.92, math.Sqrt(float64(pop)/220.0))
+		fillN := int(math.Round(float64(len(inner)-parkN) * fillRate))
+		if fillN < 0 {
+			fillN = 0
+		}
+		for i := range inner {
+			switch {
+			case i >= len(inner)-parkN:
+				inner[i].use = lotPark
+			case i < fillN:
+				inner[i].use = lotBuilding
+			default:
+				inner[i].use = lotEmpty
+			}
 		}
 	}
 
 	out := make(map[[2]int]lotCell, len(lots))
-	for _, lot := range lots {
+	for _, lot := range inner {
+		scatterTreeOnEmpty(&lot, city.Env.Int(), false)
+		out[[2]int{lot.x, lot.y}] = lot
+	}
+	for _, lot := range curb {
+		lot.use = lotEmpty
+		scatterTreeOnEmpty(&lot, city.Env.Int(), true)
 		out[[2]int{lot.x, lot.y}] = lot
 	}
 	return out
+}
+
+func scatterTreeOnEmpty(lot *lotCell, env int, curb bool) {
+	if lot.use != lotEmpty || env <= 0 {
+		return
+	}
+	chance := env / 2
+	if curb {
+		chance = (env * 3) / 2
+	}
+	if chance > 750 {
+		chance = 750
+	}
+	if int(lot.jitter%1000) < chance { //#nosec G115
+		lot.use = lotPark
+	}
 }
 
 func zoneTag(city *citycore.City, x, y int) string {
 	cx, cy := mapCols/2, mapRows/2
 	dx, dy := x-cx, y-cy
 	dist := dx*dx + dy*dy
-	if dist <= 12 && city.Com > 0 {
+	comR2 := (mapCols * mapCols) / 33
+	if dist <= comR2 && city.Com > 0 {
 		return TagCommercial
 	}
-	if (x <= 2 || x >= mapCols-3 || y <= 2 || y >= mapRows-3) && city.Ind > 0 {
+	rim := mapCols / 10
+	if rim < 2 {
+		rim = 2
+	}
+	if (x < rim || x >= mapCols-rim || y < rim || y >= mapRows-rim) && city.Ind > 0 {
 		return TagIndustrial
 	}
 	return TagResidential

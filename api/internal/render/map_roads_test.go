@@ -8,8 +8,6 @@ import (
 )
 
 func TestRoadNetworkHasFewGrassSeams(t *testing.T) {
-	forceFallbackAtlas(t)
-
 	city := &citycore.City{Slug: "road-seam-check", Pop: 500}
 	data, err := BuildCityMapPNG(city)
 	if err != nil {
@@ -47,7 +45,7 @@ func TestFallbackRoadSeamsDoNotEatLotGrass(t *testing.T) {
 		t.Fatal("expected RGBA map")
 	}
 
-	grid := buildCityGrid(city.Slug)
+	grid := buildCityGridForCity(&citycore.City{Slug: city.Slug, Pop: 500})
 	eaten := 0
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {

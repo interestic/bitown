@@ -39,19 +39,40 @@ See [Local Dev wiki](https://github.com/interestic/bitown/wiki/Local-Dev) for fu
 
 ### Debug mode (optional)
 
-Set `DEBUG_MODE=true` (in `.env` or the shell) to enable a debug endpoint for
-inspecting a specific city. Debug mode is ignored when `ENV=production`.
+Set `DEBUG_MODE=true` to enable debug tooling for a specific city.
 
 ```bash
 DEBUG_MODE=true make up
+```
+
+**JSON snapshot** — current city, unlocked sectors, today's support counts, recent logs:
+
+```bash
 curl -s http://localhost:8080/api/debug/cities/<slug> | jq .
 ```
 
-This endpoint returns:
-- current city snapshot
-- unlocked sectors
-- today's support counts by sector (UTC)
-- latest 20 support logs (visitor hash is shortened)
+**Map simulation** — override sector scores on `map.png` without writing to the DB
+(layout seed still comes from the path slug; the city must exist).
+`pop` changes **fill density and building tier mix** (huts → mid-rise → landmarks);
+`ind` / `com` / `env` / `sec` shift zones, parks, and landmark chance.
+See [docs/map-building-growth.md](docs/map-building-growth.md).
+
+```bash
+# high: denser fill, higher tiers, occasional landmarks
+open "http://localhost:8080/api/cities/testcity/map.png?pop=500&ind=10&com=5&env=400"
+
+# mid: houses in residential blocks, towers downtown; avoid identical high-rises clumping
+open "http://localhost:8080/api/cities/testcity/map.png?pop=300&ind=10&com=5&env=100"
+
+# low: sparse fill, low-tier residential (compare building kinds, not only density)
+open "http://localhost:8080/api/cities/testcity/map.png?pop=20&ind=0&com=0&env=0"
+```
+
+Query params (all optional, integers ≥ 0): `pop`, `ind`, `tra`, `sec`, `env`, `com`.
+Unspecified fields keep the city's stored values.
+
+When overrides are applied, the response is `Cache-Control: no-store` and
+`X-Bitown-Map-Debug: 1`. Without `DEBUG_MODE`, query params are ignored.
 
 ### City map image
 
@@ -69,8 +90,23 @@ back to a deterministic rectangle map.
 - layout hashed from the city slug
 - 20×20 logical grid drawn in 2:1 isometric projection
 - building density linked to `pop` (center-out fill); `ind` / `com` / `env` shift zones and parks
-- sprites are tagged in `assets/sprites-v1/buildings.json` (`counts.by_tag`); the map building pool excludes UI, roads, and empty clips
+- building **kinds** also follow `pop` / sector weights via catalog `tier` (0–3) and optional landmark mix
+- sprites are tagged in `assets/sprites-v1/buildings.json` (`counts.by_tag`, `counts.by_tier`); the map building pool excludes UI, roads, and empty clips
+- `park` tag is unused (counts may be 0); park lots draw `tree` sprites; `landmark` is mixed in at higher pop
+- empty zone tags fall back to `residential`, then a deterministic rectangle if that catalog is also empty
+- growth / building-rank mapping (Game.hx → bitown): [docs/map-building-growth.md](docs/map-building-growth.md)
 - responses send a strong ETag and `Cache-Control: public, max-age=300`
+
+### Placement object catalog (Storybook)
+
+Browse tagged sprites (residential / industrial / commercial / road / tree / water) as a visual quick reference:
+
+```bash
+make storybook
+# → http://localhost:6006  (Placement Objects / Overview)
+```
+
+See [web/README.md](web/README.md).
 
 ---
 

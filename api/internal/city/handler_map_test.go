@@ -44,6 +44,22 @@ func TestMapPNG_NotFound(t *testing.T) {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }
+
+func TestMapPNG_InvalidPathSlug(t *testing.T) {
+	h := NewHandler(nil, nil, "test-salt")
+	req := withSlugParam(httptest.NewRequest(http.MethodGet, "/api/cities/Bad_Slug/map.png", nil), "Bad_Slug")
+	rec := httptest.NewRecorder()
+
+	h.MapPNG(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(rec.Body.String(), "slug must be 2-40") {
+		t.Fatalf("body = %q, want slug validation message", rec.Body.String())
+	}
+}
+
 func TestMapPNG_NotModified(t *testing.T) {
 	mock, err := pgxmock.NewPool()
 	if err != nil {
@@ -177,6 +193,112 @@ func TestMapPNG_OK(t *testing.T) {
 	}
 	if len(rec.Body.Bytes()) == 0 {
 		t.Fatal("expected png body")
+	}
+}
+
+func TestMapPNG_DebugOverrides(t *testing.T) {
+	t.Setenv("DEBUG_MODE", "true")
+
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	created := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
+	rows := pgxmock.NewRows([]string{
+		"slug", "name", "country_code", "owner_id", "pop", "ind", "tra", "sec", "env", "com", "created_at",
+	}).AddRow("testcity", "TestCity", "JP", nil, 0, 0, 0, 0, 0, 0, created)
+
+	mock.ExpectQuery(`SELECT slug, name, country_code, owner_id, pop, ind, tra, sec, env, com, created_at\s+FROM cities WHERE slug = \$1`).
+		WithArgs("testcity").
+		WillReturnRows(rows)
+
+	h := NewHandler(mock, nil, "test-salt")
+	req := withSlugParam(httptest.NewRequest(http.MethodGet, "/api/cities/testcity/map.png?pop=500&ind=10&com=5&env=400", nil), "testcity")
+	rec := httptest.NewRecorder()
+
+	h.MapPNG(rec, req)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("expectations: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 body=%q", rec.Code, rec.Body.String())
+	}
+	if cc := rec.Header().Get("Cache-Control"); cc != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", cc)
+	}
+	if rec.Header().Get("X-Bitown-Map-Debug") != "1" {
+		t.Fatal("expected X-Bitown-Map-Debug=1")
+	}
+}
+
+func TestMapPNG_DebugOverridesIgnoredWithoutDebugMode(t *testing.T) {
+	t.Setenv("DEBUG_MODE", "")
+
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	created := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
+	rows := pgxmock.NewRows([]string{
+		"slug", "name", "country_code", "owner_id", "pop", "ind", "tra", "sec", "env", "com", "created_at",
+	}).AddRow("testcity", "TestCity", "JP", nil, 42, 0, 0, 0, 0, 0, created)
+
+	mock.ExpectQuery(`SELECT slug, name, country_code, owner_id, pop, ind, tra, sec, env, com, created_at\s+FROM cities WHERE slug = \$1`).
+		WithArgs("testcity").
+		WillReturnRows(rows)
+
+	h := NewHandler(mock, nil, "test-salt")
+	req := withSlugParam(httptest.NewRequest(http.MethodGet, "/api/cities/testcity/map.png?pop=500", nil), "testcity")
+	rec := httptest.NewRecorder()
+
+	h.MapPNG(rec, req)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("expectations: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if cc := rec.Header().Get("Cache-Control"); !strings.Contains(cc, "max-age=300") {
+		t.Fatalf("Cache-Control = %q, want max-age=300 (overrides ignored)", cc)
+	}
+	if rec.Header().Get("X-Bitown-Map-Debug") != "" {
+		t.Fatal("did not expect X-Bitown-Map-Debug without DEBUG_MODE")
+	}
+}
+
+func TestMapPNG_DebugOverrideBadParam(t *testing.T) {
+	t.Setenv("DEBUG_MODE", "true")
+
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatalf("pgxmock.NewPool: %v", err)
+	}
+	defer mock.Close()
+
+	created := time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)
+	mock.ExpectQuery(`SELECT slug, name, country_code, owner_id, pop, ind, tra, sec, env, com, created_at\s+FROM cities WHERE slug = \$1`).
+		WithArgs("testcity").
+		WillReturnRows(pgxmock.NewRows([]string{
+			"slug", "name", "country_code", "owner_id", "pop", "ind", "tra", "sec", "env", "com", "created_at",
+		}).AddRow("testcity", "TestCity", "JP", nil, 42, 0, 0, 0, 0, 0, created))
+
+	h := NewHandler(mock, nil, "test-salt")
+	req := withSlugParam(httptest.NewRequest(http.MethodGet, "/api/cities/testcity/map.png?pop=-1", nil), "testcity")
+	rec := httptest.NewRecorder()
+
+	h.MapPNG(rec, req)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("expectations: %v", err)
+	}
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 }
 

@@ -15,21 +15,10 @@ func isoTileCorners(topX, topY int) (t, r, b, l image.Point) {
 		image.Pt(topX-hw, topY+hh)
 }
 
-// drawRoadUnderlay paints flat road diamonds beneath mcRoad sprites so any
-// transparent pixels in the asset do not reveal grass seams.
+// drawRoadUnderlay paints continuous road diamonds (quad fill + seam stitch)
+// beneath mcRoad sprites. Quad edges follow 2:1 iso geometry more cleanly than
+// the row-span diamond helper, which reduces stair-step sparkle on long runs.
 func drawRoadUnderlay(img *image.RGBA, grid cityGrid) {
-	for y := 0; y < mapRows; y++ {
-		for x := 0; x < mapCols; x++ {
-			if grid[y][x] != cellRoad {
-				continue
-			}
-			topX, topY := isoCell(x, y)
-			drawIsoDiamond(img, topX, topY, roadColor, 1)
-		}
-	}
-}
-
-func drawRoadNetwork(img *image.RGBA, grid cityGrid) {
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
 			if grid[y][x] != cellRoad {
@@ -42,6 +31,64 @@ func drawRoadNetwork(img *image.RGBA, grid cityGrid) {
 	}
 	stitchRoadSeams(img, grid)
 	fillInteriorRoadSeams(img)
+}
+
+func drawRoadNetwork(img *image.RGBA, grid cityGrid) {
+	drawRoadUnderlay(img, grid)
+	softenRoadGrassBoundary(img)
+}
+
+// softenRoadGrassBoundary adds a mid-tone fringe between road and grass so
+// long iso diagonals read less stair-stepped against the bright ground.
+func softenRoadGrassBoundary(img *image.RGBA) {
+	b := img.Bounds()
+	type pix struct {
+		x, y int
+		c    color.RGBA
+	}
+	var fringe []pix
+	dirs := [][2]int{
+		{-1, 0}, {1, 0}, {0, -1}, {0, 1},
+		{-1, -1}, {-1, 1}, {1, -1}, {1, 1},
+	}
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			here := img.RGBAAt(x, y)
+			if here != roadColor {
+				continue
+			}
+			for _, d := range dirs {
+				nx, ny := x+d[0], y+d[1]
+				if !image.Pt(nx, ny).In(b) {
+					continue
+				}
+				n := img.RGBAAt(nx, ny)
+				if !isGrassLike(n) {
+					continue
+				}
+				weight := uint8(140)
+				if d[0] != 0 && d[1] != 0 {
+					weight = 90
+				}
+				fringe = append(fringe, pix{nx, ny, blendRGBA(roadColor, n, weight)})
+			}
+		}
+	}
+	for _, p := range fringe {
+		img.SetRGBA(p.x, p.y, p.c)
+	}
+}
+
+func blendRGBA(a, b color.RGBA, aWeight uint8) color.RGBA {
+	bw := uint16(255 - aWeight)
+	aw := uint16(aWeight)
+	// Channel blend is bounded: max (255*255)/255 = 255.
+	return color.RGBA{
+		R: uint8((uint16(a.R)*aw + uint16(b.R)*bw) / 255), //#nosec G115 -- see above
+		G: uint8((uint16(a.G)*aw + uint16(b.G)*bw) / 255), //#nosec G115 -- see above
+		B: uint8((uint16(a.B)*aw + uint16(b.B)*bw) / 255), //#nosec G115 -- see above
+		A: 255,
+	}
 }
 
 // stitchRoadSeams repaints shared edges between adjacent road cells so integer

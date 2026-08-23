@@ -1,5 +1,5 @@
 .PHONY: up down logs logs-api ps db redis migrate build test lint seed \
-        health city-create city-get city-support badge assets-check
+        health city-create city-get city-support badge assets-check storybook
 
 API_URL ?= http://localhost:8080
 TEST_SLUG ?= testcity
@@ -76,6 +76,11 @@ badge:
 
 assets-check:
 	python3 scripts/check_assets.py
+
+# ── Storybook (placement object catalog) ─────────────────────────────────────
+
+storybook:
+	cd web && npm install && npm run storybook
 
 # Guard: prevents data-mutating dev commands from running against non-local URLs.
 _guard-local:

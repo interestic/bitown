@@ -1,13 +1,13 @@
 package render
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/interestic/bitown/internal/citycore"
+)
 
 func TestBuildCityGridConnectsRoads(t *testing.T) {
-	grid := buildCityGrid("testcity")
-	period := layoutPeriod("testcity")
-	if period < 5 || period > 7 {
-		t.Fatalf("period %d out of range", period)
-	}
+	grid := buildCityGridForCity(&citycore.City{Slug: "testcity", Pop: 500})
 
 	startX, startY := -1, -1
 	roadCount := 0
@@ -31,23 +31,61 @@ func TestBuildCityGridConnectsRoads(t *testing.T) {
 		t.Fatalf("roads are disconnected: reached %d of %d", seen, roadCount)
 	}
 
-	again := buildCityGrid("testcity")
+	again := buildCityGridForCity(&citycore.City{Slug: "testcity", Pop: 500})
 	if again[3][3] != grid[3][3] {
 		t.Fatal("expected deterministic grid for same slug")
 	}
 }
 
 func TestLotsAreNotRoads(t *testing.T) {
-	grid := buildCityGrid("lot-check")
-	period := layoutPeriod("lot-check")
+	grid := buildCityGridForCity(&citycore.City{Slug: "lot-check", Pop: 500})
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
-			wantRoad := x%period == 0 || y%period == 0
+			wantRoad := isRoadCell(x, y)
 			gotRoad := grid[y][x] == cellRoad
 			if wantRoad != gotRoad {
 				t.Fatalf("cell %d,%d road=%v want %v", x, y, gotRoad, wantRoad)
 			}
 		}
+	}
+}
+
+func TestCityGridUsesSquareSideNesting(t *testing.T) {
+	if mapCols != displaySide*squareSide || mapRows != displaySide*squareSide {
+		t.Fatalf("map %dx%d, want displaySide(%d)*squareSide(%d)", mapCols, mapRows, displaySide, squareSide)
+	}
+	if !isRoadCell(0, 5) || !isRoadCell(10, 7) || !isRoadCell(5, 0) {
+		t.Fatal("expected square-boundary arterial roads")
+	}
+	if isRoadCell(1, 1) || isRoadCell(4, 4) || isRoadCell(9, 3) {
+		t.Fatal("expected continuous lots inside squares")
+	}
+}
+
+func TestPeonCityHasNoArterials(t *testing.T) {
+	grid := buildCityGridForCity(&citycore.City{Slug: "peon", Pop: 1})
+	for y := 0; y < mapRows; y++ {
+		for x := 0; x < mapCols; x++ {
+			if grid[y][x] == cellRoad {
+				t.Fatalf("peon map should have no roads, found at (%d,%d)", x, y)
+			}
+		}
+	}
+}
+
+func TestTransportUnlocksArterials(t *testing.T) {
+	grid := buildCityGridForCity(&citycore.City{Slug: "tra", Pop: 1, Tra: 10})
+	found := false
+	for y := 0; y < mapRows && !found; y++ {
+		for x := 0; x < mapCols; x++ {
+			if grid[y][x] == cellRoad {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Fatal("Tra>0 should unlock arterial roads even at low pop")
 	}
 }
 

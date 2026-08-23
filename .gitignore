@@ -19,6 +19,7 @@ infra/.terraform.lock.hcl
 web/node_modules/
 web/.next/
 web/out/
+web/storybook-static/
 
 # OS
 .DS_Store

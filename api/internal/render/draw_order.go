@@ -54,6 +54,10 @@ func sortMapObjects(objs []mapObject) {
 		if a.depth != b.depth {
 			return a.depth < b.depth
 		}
+		// Same diagonal: roads under parks under buildings (kind order).
+		if a.kind != b.kind {
+			return a.kind < b.kind
+		}
 		if a.height != b.height {
 			return a.height < b.height
 		}

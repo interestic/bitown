@@ -13,7 +13,7 @@ python3 scripts/normalize_sprites.py
 
 - Reads all PNG files under `assets/sprites-v1/raw/`
 - Writes normalized images to `assets/sprites-v1/normalized/`
-- Current canvas size: `96x96`
+- Current canvas size: `32x32`
 - Keeps folder structure from `raw/`
 
 ## Why

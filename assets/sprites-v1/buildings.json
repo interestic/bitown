@@ -7,75 +7,112 @@
     "road": "mcRoad in name",
     "water": "blue-dominant opaque fills (ponds, circles)",
     "tree": "green-dominant sprites with bbox_h>=14",
+    "ground": "iso floor / grass tiles (override-curated; not auto-classified yet)",
     "residential": "building-like fills that are neither industrial nor commercial",
     "industrial": "gray/black-heavy tall or wide warehouse-like masses",
     "commercial": "wide mid-height commercial footprints (bbox_w>=70, bbox_h<=70)",
     "character": "opaque<=180 and bbox_h<=13",
     "exclude": "yellow fills, full-canvas junk, flat leftovers, overrides",
-    "override_file": "sprite_tag_overrides.json wins after heuristics"
+    "override_file": "sprite_tag_overrides.json wins after heuristics",
+    "tier": "0=hut/low … 3=landmark; heuristic from tag+bbox_h (>=80 → 3; commercial 52..79 → 2); optional overrides.tiers"
   },
   "counts": {
-    "building": 24,
-    "character": 28,
+    "building": 50,
+    "character": 27,
     "ui": 9,
-    "other": 191,
+    "other": 166,
     "by_tag": {
-      "residential": 12,
-      "industrial": 9,
-      "commercial": 3,
-      "landmark": 0,
-      "road": 1,
-      "tree": 6,
-      "water": 10,
+      "residential": 9,
+      "industrial": 14,
+      "commercial": 20,
+      "landmark": 7,
+      "road": 5,
+      "tree": 4,
+      "water": 0,
+      "ground": 18,
       "park": 0,
-      "exclude": 211
+      "exclude": 175
+    },
+    "by_tier": {
+      "0": 6,
+      "1": 7,
+      "2": 10,
+      "3": 27
     }
   },
   "building_bases": [
+    "sprites/DefineSprite_123",
+    "sprites/DefineSprite_200",
     "sprites/DefineSprite_209",
     "sprites/DefineSprite_211",
+    "sprites/DefineSprite_217",
     "sprites/DefineSprite_226",
     "sprites/DefineSprite_235",
+    "sprites/DefineSprite_242",
+    "sprites/DefineSprite_249",
+    "sprites/DefineSprite_250",
+    "sprites/DefineSprite_257",
+    "sprites/DefineSprite_266",
     "sprites/DefineSprite_267",
+    "sprites/DefineSprite_269",
     "sprites/DefineSprite_277",
     "sprites/DefineSprite_285",
+    "sprites/DefineSprite_286",
+    "sprites/DefineSprite_294",
+    "sprites/DefineSprite_295",
     "sprites/DefineSprite_299",
+    "sprites/DefineSprite_320",
+    "sprites/DefineSprite_328",
+    "sprites/DefineSprite_358",
+    "sprites/DefineSprite_374",
+    "sprites/DefineSprite_381",
     "sprites/DefineSprite_405",
+    "sprites/DefineSprite_411_mcHouse1",
+    "sprites/DefineSprite_415",
+    "sprites/DefineSprite_428",
     "sprites/DefineSprite_441",
+    "sprites/DefineSprite_456",
     "sprites/DefineSprite_469",
     "sprites/DefineSprite_477",
     "sprites/DefineSprite_481",
     "sprites/DefineSprite_492",
+    "sprites/DefineSprite_493",
     "sprites/DefineSprite_496",
     "sprites/DefineSprite_500",
     "sprites/DefineSprite_501",
+    "sprites/DefineSprite_522_mcHouse2",
+    "sprites/DefineSprite_561",
     "sprites/DefineSprite_598",
-    "sprites/DefineSprite_610",
     "sprites/DefineSprite_633",
     "sprites/DefineSprite_663",
     "sprites/DefineSprite_690",
+    "sprites/DefineSprite_692",
+    "sprites/DefineSprite_693_mcHouse3",
+    "sprites/DefineSprite_719",
     "sprites/DefineSprite_721",
     "sprites/DefineSprite_747"
   ],
   "bases_by_tag": {
     "residential": [
-      "sprites/DefineSprite_226",
-      "sprites/DefineSprite_235",
-      "sprites/DefineSprite_299",
-      "sprites/DefineSprite_441",
-      "sprites/DefineSprite_469",
-      "sprites/DefineSprite_477",
-      "sprites/DefineSprite_501",
-      "sprites/DefineSprite_598",
-      "sprites/DefineSprite_610",
+      "sprites/DefineSprite_123",
+      "sprites/DefineSprite_200",
+      "sprites/DefineSprite_249",
+      "sprites/DefineSprite_266",
+      "sprites/DefineSprite_269",
+      "sprites/DefineSprite_374",
+      "sprites/DefineSprite_381",
       "sprites/DefineSprite_633",
-      "sprites/DefineSprite_690",
       "sprites/DefineSprite_721"
     ],
     "industrial": [
       "sprites/DefineSprite_209",
       "sprites/DefineSprite_211",
       "sprites/DefineSprite_267",
+      "sprites/DefineSprite_277",
+      "sprites/DefineSprite_285",
+      "sprites/DefineSprite_286",
+      "sprites/DefineSprite_294",
+      "sprites/DefineSprite_295",
       "sprites/DefineSprite_481",
       "sprites/DefineSprite_492",
       "sprites/DefineSprite_496",
@@ -84,42 +121,78 @@
       "sprites/DefineSprite_747"
     ],
     "commercial": [
-      "sprites/DefineSprite_277",
-      "sprites/DefineSprite_285",
-      "sprites/DefineSprite_405"
+      "sprites/DefineSprite_226",
+      "sprites/DefineSprite_235",
+      "sprites/DefineSprite_242",
+      "sprites/DefineSprite_250",
+      "sprites/DefineSprite_257",
+      "sprites/DefineSprite_320",
+      "sprites/DefineSprite_328",
+      "sprites/DefineSprite_358",
+      "sprites/DefineSprite_405",
+      "sprites/DefineSprite_411_mcHouse1",
+      "sprites/DefineSprite_415",
+      "sprites/DefineSprite_428",
+      "sprites/DefineSprite_441",
+      "sprites/DefineSprite_456",
+      "sprites/DefineSprite_469",
+      "sprites/DefineSprite_477",
+      "sprites/DefineSprite_493",
+      "sprites/DefineSprite_522_mcHouse2",
+      "sprites/DefineSprite_690",
+      "sprites/DefineSprite_719"
     ],
-    "landmark": [],
+    "landmark": [
+      "sprites/DefineSprite_217",
+      "sprites/DefineSprite_299",
+      "sprites/DefineSprite_501",
+      "sprites/DefineSprite_561",
+      "sprites/DefineSprite_598",
+      "sprites/DefineSprite_692",
+      "sprites/DefineSprite_693_mcHouse3"
+    ],
     "road": [
-      "sprites/DefineSprite_702_mcRoad"
+      "sprites/DefineSprite_696",
+      "sprites/DefineSprite_699",
+      "sprites/DefineSprite_702_mcRoad",
+      "sprites/DefineSprite_705",
+      "sprites/DefineSprite_724"
     ],
     "tree": [
       "sprites/DefineSprite_111",
-      "sprites/DefineSprite_14",
-      "sprites/DefineSprite_172",
       "sprites/DefineSprite_307",
       "sprites/DefineSprite_361",
       "sprites/DefineSprite_382"
     ],
-    "water": [
-      "sprites/DefineSprite_155",
-      "sprites/DefineSprite_159",
-      "sprites/DefineSprite_162",
-      "sprites/DefineSprite_3",
-      "sprites/DefineSprite_349",
-      "sprites/DefineSprite_493",
-      "sprites/DefineSprite_561",
-      "sprites/DefineSprite_613",
-      "sprites/DefineSprite_692",
-      "sprites/DefineSprite_7"
+    "water": [],
+    "ground": [
+      "sprites/DefineSprite_172",
+      "sprites/DefineSprite_388",
+      "sprites/DefineSprite_396",
+      "sprites/DefineSprite_399",
+      "sprites/DefineSprite_401",
+      "sprites/DefineSprite_503",
+      "sprites/DefineSprite_507",
+      "sprites/DefineSprite_510",
+      "sprites/DefineSprite_514",
+      "sprites/DefineSprite_516",
+      "sprites/DefineSprite_518",
+      "sprites/DefineSprite_520",
+      "sprites/DefineSprite_521",
+      "sprites/DefineSprite_616",
+      "sprites/DefineSprite_627",
+      "sprites/DefineSprite_707_mcDalle",
+      "sprites/DefineSprite_732",
+      "sprites/DefineSprite_80"
     ],
     "park": [],
     "exclude": [
       "sprites/DefineSprite_11",
-      "sprites/DefineSprite_123",
       "sprites/DefineSprite_126_mcLoading",
       "sprites/DefineSprite_132_mcAntiPanel",
       "sprites/DefineSprite_135_mcAntiLayer",
       "sprites/DefineSprite_137_brushWood",
+      "sprites/DefineSprite_14",
       "sprites/DefineSprite_140",
       "sprites/DefineSprite_142",
       "sprites/DefineSprite_143",
@@ -127,8 +200,11 @@
       "sprites/DefineSprite_148",
       "sprites/DefineSprite_149_mcAnalog",
       "sprites/DefineSprite_153_mcStatSlot",
+      "sprites/DefineSprite_155",
       "sprites/DefineSprite_157",
+      "sprites/DefineSprite_159",
       "sprites/DefineSprite_160_mcStats",
+      "sprites/DefineSprite_162",
       "sprites/DefineSprite_164",
       "sprites/DefineSprite_166",
       "sprites/DefineSprite_167",
@@ -143,83 +219,62 @@
       "sprites/DefineSprite_193",
       "sprites/DefineSprite_195",
       "sprites/DefineSprite_199",
-      "sprites/DefineSprite_200",
       "sprites/DefineSprite_204",
       "sprites/DefineSprite_206",
       "sprites/DefineSprite_208",
       "sprites/DefineSprite_21",
       "sprites/DefineSprite_213",
       "sprites/DefineSprite_215",
-      "sprites/DefineSprite_217",
       "sprites/DefineSprite_22",
       "sprites/DefineSprite_225",
       "sprites/DefineSprite_230",
       "sprites/DefineSprite_234",
       "sprites/DefineSprite_238",
       "sprites/DefineSprite_240",
-      "sprites/DefineSprite_242",
       "sprites/DefineSprite_248",
-      "sprites/DefineSprite_249",
-      "sprites/DefineSprite_250",
       "sprites/DefineSprite_253",
       "sprites/DefineSprite_256",
-      "sprites/DefineSprite_257",
       "sprites/DefineSprite_260",
       "sprites/DefineSprite_262",
       "sprites/DefineSprite_263",
       "sprites/DefineSprite_265",
-      "sprites/DefineSprite_266",
-      "sprites/DefineSprite_269",
       "sprites/DefineSprite_272",
       "sprites/DefineSprite_275",
       "sprites/DefineSprite_276",
       "sprites/DefineSprite_280",
       "sprites/DefineSprite_281",
       "sprites/DefineSprite_284",
-      "sprites/DefineSprite_286",
       "sprites/DefineSprite_289",
       "sprites/DefineSprite_291",
       "sprites/DefineSprite_293",
-      "sprites/DefineSprite_294",
-      "sprites/DefineSprite_295",
       "sprites/DefineSprite_298",
+      "sprites/DefineSprite_3",
       "sprites/DefineSprite_310",
       "sprites/DefineSprite_312",
       "sprites/DefineSprite_316",
       "sprites/DefineSprite_317",
       "sprites/DefineSprite_318",
-      "sprites/DefineSprite_320",
       "sprites/DefineSprite_323",
       "sprites/DefineSprite_326",
-      "sprites/DefineSprite_328",
       "sprites/DefineSprite_331",
       "sprites/DefineSprite_334",
       "sprites/DefineSprite_339",
       "sprites/DefineSprite_34",
+      "sprites/DefineSprite_349",
       "sprites/DefineSprite_354",
       "sprites/DefineSprite_355",
-      "sprites/DefineSprite_358",
       "sprites/DefineSprite_365",
       "sprites/DefineSprite_368",
-      "sprites/DefineSprite_374",
       "sprites/DefineSprite_378",
       "sprites/DefineSprite_380",
-      "sprites/DefineSprite_381",
-      "sprites/DefineSprite_388",
       "sprites/DefineSprite_391",
       "sprites/DefineSprite_393",
       "sprites/DefineSprite_395",
-      "sprites/DefineSprite_396",
-      "sprites/DefineSprite_399",
-      "sprites/DefineSprite_401",
       "sprites/DefineSprite_409",
       "sprites/DefineSprite_410_mcObs",
-      "sprites/DefineSprite_411_mcHouse1",
-      "sprites/DefineSprite_415",
       "sprites/DefineSprite_418",
       "sprites/DefineSprite_426",
       "sprites/DefineSprite_427",
-      "sprites/DefineSprite_428",
       "sprites/DefineSprite_432",
       "sprites/DefineSprite_435",
       "sprites/DefineSprite_436",
@@ -230,7 +285,6 @@
       "sprites/DefineSprite_451",
       "sprites/DefineSprite_453",
       "sprites/DefineSprite_455",
-      "sprites/DefineSprite_456",
       "sprites/DefineSprite_462",
       "sprites/DefineSprite_467",
       "sprites/DefineSprite_468",
@@ -242,15 +296,6 @@
       "sprites/DefineSprite_491",
       "sprites/DefineSprite_499",
       "sprites/DefineSprite_5",
-      "sprites/DefineSprite_503",
-      "sprites/DefineSprite_507",
-      "sprites/DefineSprite_510",
-      "sprites/DefineSprite_514",
-      "sprites/DefineSprite_516",
-      "sprites/DefineSprite_518",
-      "sprites/DefineSprite_520",
-      "sprites/DefineSprite_521",
-      "sprites/DefineSprite_522_mcHouse2",
       "sprites/DefineSprite_527",
       "sprites/DefineSprite_531",
       "sprites/DefineSprite_532",
@@ -278,12 +323,12 @@
       "sprites/DefineSprite_592",
       "sprites/DefineSprite_595",
       "sprites/DefineSprite_597",
-      "sprites/DefineSprite_616",
+      "sprites/DefineSprite_610",
+      "sprites/DefineSprite_613",
       "sprites/DefineSprite_619",
       "sprites/DefineSprite_620",
       "sprites/DefineSprite_622",
       "sprites/DefineSprite_626",
-      "sprites/DefineSprite_627",
       "sprites/DefineSprite_631",
       "sprites/DefineSprite_637",
       "sprites/DefineSprite_639",
@@ -301,21 +346,14 @@
       "sprites/DefineSprite_683",
       "sprites/DefineSprite_687",
       "sprites/DefineSprite_688",
-      "sprites/DefineSprite_693_mcHouse3",
-      "sprites/DefineSprite_696",
       "sprites/DefineSprite_698",
-      "sprites/DefineSprite_699",
-      "sprites/DefineSprite_705",
-      "sprites/DefineSprite_707_mcDalle",
+      "sprites/DefineSprite_7",
       "sprites/DefineSprite_708_mcHouse",
       "sprites/DefineSprite_710_mcTest",
       "sprites/DefineSprite_712",
       "sprites/DefineSprite_713_mcBg",
-      "sprites/DefineSprite_719",
-      "sprites/DefineSprite_724",
       "sprites/DefineSprite_727",
       "sprites/DefineSprite_729",
-      "sprites/DefineSprite_732",
       "sprites/DefineSprite_734",
       "sprites/DefineSprite_735",
       "sprites/DefineSprite_739",
@@ -323,7 +361,6 @@
       "sprites/DefineSprite_743",
       "sprites/DefineSprite_745",
       "sprites/DefineSprite_78",
-      "sprites/DefineSprite_80",
       "sprites/DefineSprite_88"
     ]
   },
@@ -346,11 +383,12 @@
     },
     {
       "base": "sprites/DefineSprite_123",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 474,
       "max_bbox_height": 46,
-      "max_bbox_width": 24
+      "max_bbox_width": 24,
+      "tier": 1
     },
     {
       "base": "sprites/DefineSprite_126_mcLoading",
@@ -387,7 +425,7 @@
     {
       "base": "sprites/DefineSprite_14",
       "group": "other",
-      "tag": "tree",
+      "tag": "exclude",
       "max_opaque_pixels": 2160,
       "max_bbox_height": 96,
       "max_bbox_width": 24
@@ -451,7 +489,7 @@
     {
       "base": "sprites/DefineSprite_155",
       "group": "other",
-      "tag": "water",
+      "tag": "exclude",
       "max_opaque_pixels": 829,
       "max_bbox_height": 9,
       "max_bbox_width": 96
@@ -467,7 +505,7 @@
     {
       "base": "sprites/DefineSprite_159",
       "group": "other",
-      "tag": "water",
+      "tag": "exclude",
       "max_opaque_pixels": 615,
       "max_bbox_height": 11,
       "max_bbox_width": 96
@@ -483,7 +521,7 @@
     {
       "base": "sprites/DefineSprite_162",
       "group": "other",
-      "tag": "water",
+      "tag": "exclude",
       "max_opaque_pixels": 460,
       "max_bbox_height": 34,
       "max_bbox_width": 17
@@ -531,7 +569,7 @@
     {
       "base": "sprites/DefineSprite_172",
       "group": "other",
-      "tag": "tree",
+      "tag": "ground",
       "max_opaque_pixels": 472,
       "max_bbox_height": 22,
       "max_bbox_width": 43
@@ -610,11 +648,12 @@
     },
     {
       "base": "sprites/DefineSprite_200",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 824,
       "max_bbox_height": 33,
-      "max_bbox_width": 49
+      "max_bbox_width": 49,
+      "tier": 0
     },
     {
       "base": "sprites/DefineSprite_204",
@@ -646,7 +685,8 @@
       "tag": "industrial",
       "max_opaque_pixels": 4330,
       "max_bbox_height": 90,
-      "max_bbox_width": 73
+      "max_bbox_width": 73,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_21",
@@ -662,7 +702,8 @@
       "tag": "industrial",
       "max_opaque_pixels": 2765,
       "max_bbox_height": 92,
-      "max_bbox_width": 51
+      "max_bbox_width": 51,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_213",
@@ -682,11 +723,12 @@
     },
     {
       "base": "sprites/DefineSprite_217",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 1133,
       "max_bbox_height": 68,
-      "max_bbox_width": 49
+      "max_bbox_width": 49,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_22",
@@ -707,10 +749,11 @@
     {
       "base": "sprites/DefineSprite_226",
       "group": "building",
-      "tag": "residential",
+      "tag": "commercial",
       "max_opaque_pixels": 3609,
       "max_bbox_height": 87,
-      "max_bbox_width": 56
+      "max_bbox_width": 56,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_230",
@@ -731,10 +774,11 @@
     {
       "base": "sprites/DefineSprite_235",
       "group": "building",
-      "tag": "residential",
+      "tag": "commercial",
       "max_opaque_pixels": 3425,
       "max_bbox_height": 89,
-      "max_bbox_width": 55
+      "max_bbox_width": 55,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_238",
@@ -754,11 +798,12 @@
     },
     {
       "base": "sprites/DefineSprite_242",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1560,
       "max_bbox_height": 53,
-      "max_bbox_width": 37
+      "max_bbox_width": 37,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_248",
@@ -770,19 +815,21 @@
     },
     {
       "base": "sprites/DefineSprite_249",
-      "group": "character",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 172,
       "max_bbox_height": 13,
-      "max_bbox_width": 21
+      "max_bbox_width": 21,
+      "tier": 0
     },
     {
       "base": "sprites/DefineSprite_250",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1329,
       "max_bbox_height": 55,
-      "max_bbox_width": 34
+      "max_bbox_width": 34,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_253",
@@ -802,11 +849,12 @@
     },
     {
       "base": "sprites/DefineSprite_257",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1259,
       "max_bbox_height": 48,
-      "max_bbox_width": 33
+      "max_bbox_width": 33,
+      "tier": 1
     },
     {
       "base": "sprites/DefineSprite_260",
@@ -842,11 +890,12 @@
     },
     {
       "base": "sprites/DefineSprite_266",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 1039,
       "max_bbox_height": 38,
-      "max_bbox_width": 37
+      "max_bbox_width": 37,
+      "tier": 1
     },
     {
       "base": "sprites/DefineSprite_267",
@@ -854,15 +903,17 @@
       "tag": "industrial",
       "max_opaque_pixels": 2477,
       "max_bbox_height": 74,
-      "max_bbox_width": 53
+      "max_bbox_width": 53,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_269",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 1279,
       "max_bbox_height": 43,
-      "max_bbox_width": 48
+      "max_bbox_width": 48,
+      "tier": 1
     },
     {
       "base": "sprites/DefineSprite_272",
@@ -891,10 +942,11 @@
     {
       "base": "sprites/DefineSprite_277",
       "group": "building",
-      "tag": "commercial",
+      "tag": "industrial",
       "max_opaque_pixels": 2435,
       "max_bbox_height": 61,
-      "max_bbox_width": 75
+      "max_bbox_width": 75,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_280",
@@ -923,18 +975,20 @@
     {
       "base": "sprites/DefineSprite_285",
       "group": "building",
-      "tag": "commercial",
+      "tag": "industrial",
       "max_opaque_pixels": 2208,
       "max_bbox_height": 49,
-      "max_bbox_width": 76
+      "max_bbox_width": 76,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_286",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 235,
       "max_bbox_height": 26,
-      "max_bbox_width": 20
+      "max_bbox_width": 20,
+      "tier": 1
     },
     {
       "base": "sprites/DefineSprite_289",
@@ -962,19 +1016,21 @@
     },
     {
       "base": "sprites/DefineSprite_294",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 854,
       "max_bbox_height": 35,
-      "max_bbox_width": 33
+      "max_bbox_width": 33,
+      "tier": 1
     },
     {
       "base": "sprites/DefineSprite_295",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 1061,
       "max_bbox_height": 41,
-      "max_bbox_width": 49
+      "max_bbox_width": 49,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_298",
@@ -987,15 +1043,16 @@
     {
       "base": "sprites/DefineSprite_299",
       "group": "building",
-      "tag": "residential",
+      "tag": "landmark",
       "max_opaque_pixels": 2174,
       "max_bbox_height": 87,
-      "max_bbox_width": 46
+      "max_bbox_width": 46,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_3",
       "group": "other",
-      "tag": "water",
+      "tag": "exclude",
       "max_opaque_pixels": 864,
       "max_bbox_height": 9,
       "max_bbox_width": 96
@@ -1050,11 +1107,12 @@
     },
     {
       "base": "sprites/DefineSprite_320",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1749,
       "max_bbox_height": 56,
-      "max_bbox_width": 50
+      "max_bbox_width": 50,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_323",
@@ -1074,11 +1132,12 @@
     },
     {
       "base": "sprites/DefineSprite_328",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 732,
       "max_bbox_height": 29,
-      "max_bbox_width": 48
+      "max_bbox_width": 48,
+      "tier": 0
     },
     {
       "base": "sprites/DefineSprite_331",
@@ -1115,7 +1174,7 @@
     {
       "base": "sprites/DefineSprite_349",
       "group": "other",
-      "tag": "water",
+      "tag": "exclude",
       "max_opaque_pixels": 99,
       "max_bbox_height": 13,
       "max_bbox_width": 19
@@ -1138,11 +1197,12 @@
     },
     {
       "base": "sprites/DefineSprite_358",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1145,
       "max_bbox_height": 39,
-      "max_bbox_width": 50
+      "max_bbox_width": 50,
+      "tier": 0
     },
     {
       "base": "sprites/DefineSprite_361",
@@ -1170,11 +1230,12 @@
     },
     {
       "base": "sprites/DefineSprite_374",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 411,
       "max_bbox_height": 28,
-      "max_bbox_width": 41
+      "max_bbox_width": 41,
+      "tier": 0
     },
     {
       "base": "sprites/DefineSprite_378",
@@ -1194,11 +1255,12 @@
     },
     {
       "base": "sprites/DefineSprite_381",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 580,
       "max_bbox_height": 30,
-      "max_bbox_width": 44
+      "max_bbox_width": 44,
+      "tier": 0
     },
     {
       "base": "sprites/DefineSprite_382",
@@ -1211,7 +1273,7 @@
     {
       "base": "sprites/DefineSprite_388",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 2325,
       "max_bbox_height": 48,
       "max_bbox_width": 96
@@ -1243,7 +1305,7 @@
     {
       "base": "sprites/DefineSprite_396",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 2325,
       "max_bbox_height": 48,
       "max_bbox_width": 96
@@ -1251,7 +1313,7 @@
     {
       "base": "sprites/DefineSprite_399",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 2419,
       "max_bbox_height": 49,
       "max_bbox_width": 96
@@ -1259,7 +1321,7 @@
     {
       "base": "sprites/DefineSprite_401",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 2199,
       "max_bbox_height": 47,
       "max_bbox_width": 92
@@ -1270,7 +1332,8 @@
       "tag": "commercial",
       "max_opaque_pixels": 4119,
       "max_bbox_height": 66,
-      "max_bbox_width": 96
+      "max_bbox_width": 96,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_409",
@@ -1290,19 +1353,21 @@
     },
     {
       "base": "sprites/DefineSprite_411_mcHouse1",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 2048,
       "max_bbox_height": 53,
-      "max_bbox_width": 83
+      "max_bbox_width": 83,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_415",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1527,
       "max_bbox_height": 91,
-      "max_bbox_width": 21
+      "max_bbox_width": 21,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_418",
@@ -1330,11 +1395,12 @@
     },
     {
       "base": "sprites/DefineSprite_428",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1503,
       "max_bbox_height": 91,
-      "max_bbox_width": 21
+      "max_bbox_width": 21,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_432",
@@ -1379,10 +1445,11 @@
     {
       "base": "sprites/DefineSprite_441",
       "group": "building",
-      "tag": "residential",
+      "tag": "commercial",
       "max_opaque_pixels": 2989,
       "max_bbox_height": 89,
-      "max_bbox_width": 40
+      "max_bbox_width": 40,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_448",
@@ -1426,11 +1493,12 @@
     },
     {
       "base": "sprites/DefineSprite_456",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1448,
       "max_bbox_height": 92,
-      "max_bbox_width": 25
+      "max_bbox_width": 25,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_462",
@@ -1459,10 +1527,11 @@
     {
       "base": "sprites/DefineSprite_469",
       "group": "building",
-      "tag": "residential",
+      "tag": "commercial",
       "max_opaque_pixels": 2736,
       "max_bbox_height": 85,
-      "max_bbox_width": 45
+      "max_bbox_width": 45,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_475",
@@ -1483,10 +1552,11 @@
     {
       "base": "sprites/DefineSprite_477",
       "group": "building",
-      "tag": "residential",
+      "tag": "commercial",
       "max_opaque_pixels": 2320,
       "max_bbox_height": 89,
-      "max_bbox_width": 29
+      "max_bbox_width": 29,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_481",
@@ -1494,7 +1564,8 @@
       "tag": "industrial",
       "max_opaque_pixels": 1708,
       "max_bbox_height": 91,
-      "max_bbox_width": 24
+      "max_bbox_width": 24,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_485",
@@ -1534,15 +1605,17 @@
       "tag": "industrial",
       "max_opaque_pixels": 4330,
       "max_bbox_height": 90,
-      "max_bbox_width": 73
+      "max_bbox_width": 73,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_493",
-      "group": "other",
-      "tag": "water",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1646,
       "max_bbox_height": 91,
-      "max_bbox_width": 46
+      "max_bbox_width": 46,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_496",
@@ -1550,7 +1623,8 @@
       "tag": "industrial",
       "max_opaque_pixels": 4330,
       "max_bbox_height": 90,
-      "max_bbox_width": 73
+      "max_bbox_width": 73,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_499",
@@ -1574,20 +1648,22 @@
       "tag": "industrial",
       "max_opaque_pixels": 4364,
       "max_bbox_height": 90,
-      "max_bbox_width": 73
+      "max_bbox_width": 73,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_501",
       "group": "building",
-      "tag": "residential",
+      "tag": "landmark",
       "max_opaque_pixels": 2157,
       "max_bbox_height": 91,
-      "max_bbox_width": 57
+      "max_bbox_width": 57,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_503",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 2234,
       "max_bbox_height": 48,
       "max_bbox_width": 89
@@ -1595,7 +1671,7 @@
     {
       "base": "sprites/DefineSprite_507",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 463,
       "max_bbox_height": 22,
       "max_bbox_width": 38
@@ -1603,7 +1679,7 @@
     {
       "base": "sprites/DefineSprite_510",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 1009,
       "max_bbox_height": 34,
       "max_bbox_width": 64
@@ -1611,7 +1687,7 @@
     {
       "base": "sprites/DefineSprite_514",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 108,
       "max_bbox_height": 20,
       "max_bbox_width": 55
@@ -1619,7 +1695,7 @@
     {
       "base": "sprites/DefineSprite_516",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 381,
       "max_bbox_height": 49,
       "max_bbox_width": 92
@@ -1627,7 +1703,7 @@
     {
       "base": "sprites/DefineSprite_518",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 376,
       "max_bbox_height": 49,
       "max_bbox_width": 92
@@ -1635,7 +1711,7 @@
     {
       "base": "sprites/DefineSprite_520",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 378,
       "max_bbox_height": 49,
       "max_bbox_width": 92
@@ -1643,18 +1719,19 @@
     {
       "base": "sprites/DefineSprite_521",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 1984,
       "max_bbox_height": 46,
       "max_bbox_width": 87
     },
     {
       "base": "sprites/DefineSprite_522_mcHouse2",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1483,
       "max_bbox_height": 85,
-      "max_bbox_width": 46
+      "max_bbox_width": 46,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_527",
@@ -1770,11 +1847,12 @@
     },
     {
       "base": "sprites/DefineSprite_561",
-      "group": "other",
-      "tag": "water",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 2394,
       "max_bbox_height": 93,
-      "max_bbox_width": 37
+      "max_bbox_width": 37,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_566",
@@ -1883,15 +1961,16 @@
     {
       "base": "sprites/DefineSprite_598",
       "group": "building",
-      "tag": "residential",
+      "tag": "landmark",
       "max_opaque_pixels": 2062,
       "max_bbox_height": 89,
-      "max_bbox_width": 29
+      "max_bbox_width": 29,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_610",
-      "group": "building",
-      "tag": "residential",
+      "group": "other",
+      "tag": "exclude",
       "max_opaque_pixels": 3314,
       "max_bbox_height": 96,
       "max_bbox_width": 40
@@ -1899,7 +1978,7 @@
     {
       "base": "sprites/DefineSprite_613",
       "group": "other",
-      "tag": "water",
+      "tag": "exclude",
       "max_opaque_pixels": 533,
       "max_bbox_height": 50,
       "max_bbox_width": 60
@@ -1907,7 +1986,7 @@
     {
       "base": "sprites/DefineSprite_616",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 359,
       "max_bbox_height": 18,
       "max_bbox_width": 36
@@ -1947,7 +2026,7 @@
     {
       "base": "sprites/DefineSprite_627",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 359,
       "max_bbox_height": 24,
       "max_bbox_width": 43
@@ -1966,7 +2045,8 @@
       "tag": "residential",
       "max_opaque_pixels": 2832,
       "max_bbox_height": 93,
-      "max_bbox_width": 40
+      "max_bbox_width": 40,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_637",
@@ -2046,7 +2126,8 @@
       "tag": "industrial",
       "max_opaque_pixels": 1709,
       "max_bbox_height": 94,
-      "max_bbox_width": 35
+      "max_bbox_width": 35,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_676",
@@ -2107,31 +2188,34 @@
     {
       "base": "sprites/DefineSprite_690",
       "group": "building",
-      "tag": "residential",
+      "tag": "commercial",
       "max_opaque_pixels": 2153,
       "max_bbox_height": 94,
-      "max_bbox_width": 39
+      "max_bbox_width": 39,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_692",
-      "group": "other",
-      "tag": "water",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 1736,
       "max_bbox_height": 92,
-      "max_bbox_width": 43
+      "max_bbox_width": 43,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_693_mcHouse3",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 1763,
       "max_bbox_height": 79,
-      "max_bbox_width": 43
+      "max_bbox_width": 43,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_696",
       "group": "other",
-      "tag": "exclude",
+      "tag": "road",
       "max_opaque_pixels": 32,
       "max_bbox_height": 20,
       "max_bbox_width": 8
@@ -2147,7 +2231,7 @@
     {
       "base": "sprites/DefineSprite_699",
       "group": "other",
-      "tag": "exclude",
+      "tag": "road",
       "max_opaque_pixels": 66,
       "max_bbox_height": 41,
       "max_bbox_width": 75
@@ -2155,7 +2239,7 @@
     {
       "base": "sprites/DefineSprite_7",
       "group": "other",
-      "tag": "water",
+      "tag": "exclude",
       "max_opaque_pixels": 1940,
       "max_bbox_height": 96,
       "max_bbox_width": 47
@@ -2171,7 +2255,7 @@
     {
       "base": "sprites/DefineSprite_705",
       "group": "other",
-      "tag": "exclude",
+      "tag": "road",
       "max_opaque_pixels": 1554,
       "max_bbox_height": 48,
       "max_bbox_width": 95
@@ -2179,7 +2263,7 @@
     {
       "base": "sprites/DefineSprite_707_mcDalle",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 3080,
       "max_bbox_height": 56,
       "max_bbox_width": 96
@@ -2218,11 +2302,12 @@
     },
     {
       "base": "sprites/DefineSprite_719",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 5810,
       "max_bbox_height": 95,
-      "max_bbox_width": 76
+      "max_bbox_width": 76,
+      "tier": 3
     },
     {
       "base": "sprites/DefineSprite_721",
@@ -2230,12 +2315,13 @@
       "tag": "residential",
       "max_opaque_pixels": 1602,
       "max_bbox_height": 50,
-      "max_bbox_width": 39
+      "max_bbox_width": 39,
+      "tier": 1
     },
     {
       "base": "sprites/DefineSprite_724",
       "group": "other",
-      "tag": "exclude",
+      "tag": "road",
       "max_opaque_pixels": 828,
       "max_bbox_height": 50,
       "max_bbox_width": 96
@@ -2259,7 +2345,7 @@
     {
       "base": "sprites/DefineSprite_732",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 969,
       "max_bbox_height": 31,
       "max_bbox_width": 63
@@ -2318,7 +2404,8 @@
       "tag": "industrial",
       "max_opaque_pixels": 3778,
       "max_bbox_height": 62,
-      "max_bbox_width": 91
+      "max_bbox_width": 91,
+      "tier": 2
     },
     {
       "base": "sprites/DefineSprite_78",
@@ -2331,7 +2418,7 @@
     {
       "base": "sprites/DefineSprite_80",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 599,
       "max_bbox_height": 24,
       "max_bbox_width": 40
