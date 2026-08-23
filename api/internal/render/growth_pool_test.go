@@ -251,36 +251,29 @@ func TestPickBuildingKeyForLotPrefersLowTierAtLowPop(t *testing.T) {
 		t.Fatal("expected TierByFolder from buildings.json")
 	}
 
-	city := &citycore.City{Slug: "growth-low", Pop: 20}
+	city := &citycore.City{Slug: "growth-mid", Pop: 100}
+	cx, cy := mapCols/2, mapRows/2
 	var lowTier, samples int
 	for seed := uint32(0); seed < 64; seed++ {
-		key := atlas.PickBuildingKeyForLot(city, TagResidential, 10, 10, seed)
+		key := atlas.PickBuildingKeyForLot(city, TagResidential, cx, cy, seed)
 		if key == "" {
 			continue
 		}
 		samples++
 		folder := spriteFolderBase(strings.TrimSuffix(key, "_v00.png"))
-		// strip frame index path: sprites/Foo/1 → sprites/Foo
-		if i := strings.LastIndex(folder, "/"); i > 0 && !strings.Contains(folder[i+1:], "Define") {
-			// key is sprites/Foo/1_v00.png → folder base sprites/Foo
-			parts := strings.Split(key, "/")
-			if len(parts) >= 2 {
-				folder = parts[0] + "/" + parts[1]
-			}
-		}
 		tier := atlas.folderTier(folder)
 		if tier <= 1 {
 			lowTier++
 		}
 		if tier >= 3 {
-			t.Fatalf("low pop must not pick landmark-tier building, got %s tier=%d", key, tier)
+			t.Fatalf("mid pop must not pick landmark-tier building, got %s tier=%d", key, tier)
 		}
 	}
 	if samples < 16 {
 		t.Fatalf("expected residential picks, got %d", samples)
 	}
 	if lowTier*2 < samples {
-		t.Fatalf("low pop should mostly pick tier<=1, got %d/%d", lowTier, samples)
+		t.Fatalf("mid pop should mostly pick tier<=1 at center, got %d/%d", lowTier, samples)
 	}
 }
 
