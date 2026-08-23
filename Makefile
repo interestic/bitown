@@ -1,5 +1,6 @@
 .PHONY: up down logs logs-api ps db redis migrate build test lint seed \
-        health city-create city-get city-support badge assets-check storybook
+        health city-create city-get city-support badge assets-check storybook \
+        frontend-dev frontend-build
 
 API_URL ?= http://localhost:8080
 TEST_SLUG ?= testcity
@@ -78,9 +79,16 @@ assets-check:
 	python3 scripts/check_assets.py
 
 # ── Storybook (placement object catalog) ─────────────────────────────────────
+# Uses npm ci (lockfile) instead of npm install for reproducible local runs.
 
 storybook:
 	cd web && npm ci && npm run storybook
+
+frontend-dev:
+	cd frontend && npm ci && npm run dev
+
+frontend-build:
+	cd frontend && npm ci && npm run build
 
 # Guard: prevents data-mutating dev commands from running against non-local URLs.
 _guard-local:

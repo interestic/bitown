@@ -41,10 +41,12 @@ services:
         condition: service_healthy
     environment:
       BITOWN_ASSETS_DIR: /assets
+      BITOWN_EMBED_DIR: /embed
       DEBUG_MODE: ${DEBUG_MODE:-false}
     volumes:
       - ./api:/app
       - ./assets:/assets:ro
+      - ./embed:/embed:ro
       - go_pkg:/root/go/pkg
 
 volumes:

@@ -1,0 +1,152 @@
+:root {
+  color-scheme: light;
+  --bg: #eef3ea;
+  --ink: #142018;
+  --muted: #5a6b5e;
+  --card: #fbfdf8;
+  --line: #cdd9c8;
+  --accent: #1b5e3b;
+  --warn: #9a3412;
+  --font: "IBM Plex Sans", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #dce8d6 0%, transparent 55%),
+    linear-gradient(180deg, #f4f7f1 0%, var(--bg) 40%, #e4ecdf 100%);
+  color: var(--ink);
+}
+
+a { color: var(--accent); }
+
+main {
+  width: min(960px, 100% - 2rem);
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+}
+
+.layout {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.map-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.map-panel img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #c5d9c0;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 1rem 1.1rem;
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.metrics, .sectors {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.row dt { color: var(--muted); }
+.row dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actions button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.status {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.status.err { color: var(--warn); }
+
+.links {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.home-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.home-list a {
+  display: block;
+  padding: 0.75rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+}
+
+.home-list a:hover { border-color: var(--accent); }

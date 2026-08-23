@@ -75,6 +75,9 @@ func TestSupport_EmptySectorDefaultsToPop(t *testing.T) {
 	mock.ExpectExec(`INSERT INTO visites_log \(city_slug, sector, visitor_hash\) VALUES \(\$1, \$2, \$3\)`).
 		WithArgs("tokyo", citycore.SectorPop.String(), pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+	mock.ExpectExec(`INSERT INTO events_log \(city_slug, event_type, delta\) VALUES \(\$1, \$2, \$3\)`).
+		WithArgs("tokyo", "support", pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 	mock.ExpectQuery(cityBySlugQuery).WithArgs("tokyo").WillReturnRows(cityRow(11))
 
 	h := NewHandler(mock, rdb, "test-salt")
@@ -119,6 +122,9 @@ func TestSupport_UnlockedSectorIncrements(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 	mock.ExpectExec(`INSERT INTO visites_log \(city_slug, sector, visitor_hash\) VALUES \(\$1, \$2, \$3\)`).
 		WithArgs("tokyo", citycore.SectorInd.String(), pgxmock.AnyArg()).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+	mock.ExpectExec(`INSERT INTO events_log \(city_slug, event_type, delta\) VALUES \(\$1, \$2, \$3\)`).
+		WithArgs("tokyo", "support", pgxmock.AnyArg()).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 	mock.ExpectQuery(cityBySlugQuery).WithArgs("tokyo").WillReturnRows(cityRow(50))
 
