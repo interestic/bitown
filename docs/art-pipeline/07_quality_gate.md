@@ -29,6 +29,7 @@ make assets-check
 ## Map zone contract
 
 - zone lots pick from `residential` / `industrial` / `commercial` via `counts.by_tag`
+- at high pop, zone lots may additionally draw from `landmark` (growth mix; see `docs/map-building-growth.md`)
 - empty zone tag → fall back to `residential`, then a rectangle if residential is also empty
 - do not fall back to the full `building_bases` pool on empty tags
 

@@ -80,7 +80,7 @@ assets-check:
 # ── Storybook (placement object catalog) ─────────────────────────────────────
 
 storybook:
-	cd web && npm install && npm run storybook
+	cd web && npm ci && npm run storybook
 
 # Guard: prevents data-mutating dev commands from running against non-local URLs.
 _guard-local:

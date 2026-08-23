@@ -7,7 +7,7 @@ Go server module for the bitown backend.
 
 ## パッケージ構成 / Package layout
 
-```
+```text
 api/
 ├── cmd/            # エントリーポイント / Entry points
 ├── internal/

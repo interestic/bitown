@@ -130,7 +130,7 @@ PNG / ETag の決定論は維持（同一 slug・同一パラメータで同一�
 | 入力 | M1 |
 |---|---|
 | `sec` | `getBatType` 重み index 3 として **landmark ブーストにのみ使用**（専用ゾーンなし） |
-| `tra` | **未使用**（道路係数。道路レイアウトは slug ハッシュのまま） |
+| `tra` | **幹線道路の解禁**（`pop≥80` または `tra>0` で `arterialsEnabled`）。建物 tier / ゾーン選択には未使用 |
 | `PROBA_SPECIAL` | M1 では省略可（見た目 variant は既存 `_v00` 固定で十分） |
 
 厳密写しが必要になったら Phase 後続で見直す。
