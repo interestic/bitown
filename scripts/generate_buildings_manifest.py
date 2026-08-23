@@ -64,6 +64,7 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
     max_bbox_w = 0
     blues = yellows = greens = blacks = semi = strong = cyan = grays = 0
     canvas_pixels = 0
+    total_opaque = 0
     for png in folder.glob("*.png"):
         im = Image.open(png).convert("RGBA")
         pixels = im.load()
@@ -93,12 +94,13 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
                 if a >= 220:
                     strong += 1
         max_opaque = max(max_opaque, opaque)
+        total_opaque += opaque
         bbox = im.getbbox()
         if bbox:
             max_bbox_h = max(max_bbox_h, bbox[3] - bbox[1])
             max_bbox_w = max(max_bbox_w, bbox[2] - bbox[0])
 
-    denom = max(max_opaque, 1)
+    denom = max(total_opaque, 1)
     fill = max_opaque / max(canvas_pixels, 1)
     colors = {
         "blue_ratio": blues / denom,
@@ -186,6 +188,8 @@ def load_overrides(path: Path) -> tuple[dict[str, str], dict[str, int]]:
     tiers_raw = data.get("tiers") or {}
     tiers: dict[str, int] = {}
     for base, tier in tiers_raw.items():
+        if isinstance(tier, bool):
+            raise SystemExit(f"override tier {base} must be int 0..{MAX_TIER}, got {tier!r}")
         if not isinstance(tier, int) or tier < 0 or tier > MAX_TIER:
             raise SystemExit(f"override tier {base} must be int 0..{MAX_TIER}, got {tier!r}")
         tiers[str(base)] = tier
