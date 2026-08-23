@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -59,11 +60,23 @@ func main() {
 
 	cityHandler := city.NewHandler(db, rdb, saltSeed)
 
+	embedDir := os.Getenv("BITOWN_EMBED_DIR")
+	if embedDir == "" {
+		embedDir = "../embed"
+	}
+	if st, err := os.Stat(embedDir); err == nil && st.IsDir() {
+		r.Handle("/embed/*", embedFileServer(embedDir))
+		slog.Info("embed widget enabled", "dir", embedDir)
+	} else {
+		slog.Warn("embed widget disabled: set BITOWN_EMBED_DIR to the embed/ directory", "dir", embedDir, "err", err)
+	}
+
 	r.Get("/api/health", handleHealth)
 	r.Route("/api/cities", func(r chi.Router) {
 		r.Post("/", cityHandler.Create)
 		r.Get("/{slug}", cityHandler.Get)
 		r.Get("/{slug}/map.png", cityHandler.MapPNG)
+		r.Get("/{slug}/events", cityHandler.Events)
 		r.Post("/{slug}/support", cityHandler.Support)
 	})
 	if city.DebugModeEnabled() {
@@ -116,6 +129,23 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
+// embedFileServer serves static files from embedDir at /embed/*.
+// chi Mount leaves r.URL.Path unchanged, which breaks net/http FileServer.
+func embedFileServer(embedDir string) http.Handler {
+	return http.StripPrefix("/embed", noDirListing(http.FileServer(http.Dir(embedDir))))
+}
+
+// noDirListing wraps a FileServer so directory URLs return 404 instead of listings.
+func noDirListing(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func mustEnv(key string) string {
 	v := os.Getenv(key)
 	if v == "" {
@@ -124,4 +154,3 @@ func mustEnv(key string) string {
 	}
 	return v
 }
-

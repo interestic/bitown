@@ -106,3 +106,24 @@ func SectorColumn(sector Sector) string {
 		return ""
 	}
 }
+
+// ApplySectorDelta bumps a sector value on c in memory (best-effort response shaping).
+func ApplySectorDelta(c *City, sector Sector, delta SectorValue) {
+	if c == nil {
+		return
+	}
+	switch sector {
+	case SectorPop:
+		c.Pop += delta
+	case SectorInd:
+		c.Ind += delta
+	case SectorTra:
+		c.Tra += delta
+	case SectorSec:
+		c.Sec += delta
+	case SectorEnv:
+		c.Env += delta
+	case SectorCom:
+		c.Com += delta
+	}
+}

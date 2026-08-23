@@ -86,9 +86,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(city)
+	writeCityJSON(w, http.StatusCreated, &city)
 }
 
 // GET /api/cities/{slug}
@@ -106,8 +104,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(city)
+	writeCityJSON(w, http.StatusOK, city)
 }
 
 // GET /api/debug/cities/{slug}
@@ -201,7 +198,7 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"city":                  city,
+		"city":                  cityWithMetrics(city),
 		"unlocked_sectors":      unlocked,
 		"today_support_by_kind": todayBySector,
 		"recent_support_logs":   recent,
@@ -290,12 +287,105 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("failed to insert visites_log", "city", slug.String(), "err", logErr)
 	}
 
-	city, _ = h.getCity(ctx, slug)
+	delta, _ := json.Marshal(map[string]any{"sector": sector.String(), "delta": 1})
+	if _, evErr := h.db.Exec(ctx,
+		`INSERT INTO events_log (city_slug, event_type, delta) VALUES ($1, $2, $3)`,
+		slug.String(), "support", delta); evErr != nil {
+		// Vote already committed; surface loudly so ops can reconcile missing feed rows.
+		slog.Error("failed to insert events_log", "city", slug.String(), "err", evErr)
+	}
+
+	if refreshed, getErr := h.getCity(ctx, slug); getErr != nil {
+		slog.Warn("support: failed to reload city after vote", "city", slug.String(), "err", getErr)
+		// Vote already committed; return pre-update city with best-effort local bump.
+		citycore.ApplySectorDelta(city, sector, 1)
+	} else {
+		city = refreshed
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"city":    city,
+		"city":    cityWithMetrics(city),
 		"message": fmt.Sprintf("+1 %s!", sector),
 	})
+}
+
+// GET /api/cities/{slug}/events
+func (h *Handler) Events(w http.ResponseWriter, r *http.Request) {
+	slug, ok := pathSlugOrBadRequest(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	if _, err := h.getCity(ctx, slug); err != nil {
+		if err == pgx.ErrNoRows {
+			http.Error(w, "city not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	limit := 20
+	rows, err := h.db.Query(ctx,
+		`SELECT id, event_type, delta, created_at
+		 FROM events_log WHERE city_slug = $1
+		 ORDER BY created_at DESC, id DESC LIMIT $2`,
+		slug.String(), limit)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	events := make([]cityEvent, 0)
+	for rows.Next() {
+		var ev cityEvent
+		var delta []byte
+		if err := rows.Scan(&ev.ID, &ev.EventType, &delta, &ev.CreatedAt); err != nil {
+			slog.Error("events: scan failed", "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		ev.Delta = json.RawMessage(delta)
+		if ev.Delta == nil {
+			ev.Delta = json.RawMessage(`{}`)
+		}
+		events = append(events, ev)
+	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(events)
+}
+
+type cityEvent struct {
+	ID        int64           `json:"id"`
+	EventType string          `json:"event_type"`
+	Delta     json.RawMessage `json:"delta"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
+type cityJSON struct {
+	citycore.City
+	Metrics citycore.Metrics `json:"metrics"`
+}
+
+func cityWithMetrics(c *citycore.City) cityJSON {
+	if c == nil {
+		return cityJSON{}
+	}
+	return cityJSON{City: *c, Metrics: citycore.ComputeMetrics(c)}
+}
+
+func writeCityJSON(w http.ResponseWriter, status int, c *citycore.City) {
+	w.Header().Set("Content-Type", "application/json")
+	if status != http.StatusOK {
+		w.WriteHeader(status)
+	}
+	_ = json.NewEncoder(w).Encode(cityWithMetrics(c))
 }
 
 // GET /api/rankings
@@ -328,7 +418,7 @@ func (h *Handler) Rankings(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	cities := []citycore.City{}
+	out := make([]cityJSON, 0)
 	for rows.Next() {
 		var c citycore.City
 		if err := rows.Scan(&c.Slug, &c.Name, &c.CountryCode,
@@ -336,7 +426,7 @@ func (h *Handler) Rankings(w http.ResponseWriter, r *http.Request) {
 			slog.Warn("rankings: failed to scan row", "err", err)
 			continue
 		}
-		cities = append(cities, c)
+		out = append(out, cityWithMetrics(&c))
 	}
 	if err := rows.Err(); err != nil {
 		slog.Error("rankings: row iteration error", "err", err)
@@ -345,7 +435,7 @@ func (h *Handler) Rankings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(cities)
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 var badgeTmpl = template.Must(template.New("badge").Parse(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="20">

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>bitown</title>
+  <style>
+    :root {
+      --bg: #e8f0e4;
+      --ink: #1a2e1a;
+      --muted: #4a6350;
+      --accent: #2d6a4f;
+      --card: #f7fbf5;
+      --ok: #1b4332;
+      --warn: #9a3412;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "IBM Plex Sans", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 160px;
+    }
+    .map {
+      flex: 1;
+      min-height: 100px;
+      background: #c5d9c0 center / cover no-repeat;
+      cursor: pointer;
+      position: relative;
+      border-bottom: 1px solid #c0d0bc;
+    }
+    .map:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      background: var(--card);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+    .name { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pop { color: var(--muted); }
+    .status { padding: 4px 8px; font-size: 11px; color: var(--ok); background: #d8f3dc; }
+    .status.err { color: var(--warn); background: #ffedd5; }
+    .status.hidden { display: none; }
+    .sectors {
+      display: none;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 6px 8px;
+      background: var(--card);
+      border-top: 1px solid #c0d0bc;
+    }
+    .sectors.open { display: flex; }
+    .sectors button {
+      font: inherit;
+      font-size: 10px;
+      padding: 4px 6px;
+      border: 1px solid #a8c0a8;
+      border-radius: 4px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .sectors button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .sectors button:hover:not(:disabled) { background: #eef6ee; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="map" class="map" role="button" tabindex="0" aria-label="Support this city"></div>
+    <div class="bar">
+      <span id="name" class="name">…</span>
+      <span id="pop" class="pop"></span>
+    </div>
+    <div id="status" class="status hidden" role="status"></div>
+    <div id="sectors" class="sectors" aria-label="Choose sector"></div>
+  </div>
+  <script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var slug = (params.get("slug") || "").trim().toLowerCase();
+  // Prefer same-origin API. Optional ?api= only when it matches this page's origin
+  // (or localhost for local iframe previews). Arbitrary remote api= is ignored.
+  var requestedApi = (params.get("api") || "").replace(/\/$/, "");
+  var apiBase = location.origin;
+  if (requestedApi) {
+    try {
+      var reqOrigin = new URL(requestedApi).origin;
+      if (reqOrigin === location.origin ||
+          reqOrigin.indexOf("://localhost") !== -1 ||
+          reqOrigin.indexOf("://127.0.0.1") !== -1) {
+        apiBase = requestedApi;
+      }
+    } catch (e) { /* ignore invalid api= */ }
+  }
+  var SECTORS = ["pop", "ind", "tra", "sec", "env", "com"];
+  var LOCK = { ind: 50, tra: 100, sec: 300, env: 500, com: 1000 };
+
+  var mapEl = document.getElementById("map");
+  var nameEl = document.getElementById("name");
+  var popEl = document.getElementById("pop");
+  var statusEl = document.getElementById("status");
+  var sectorsEl = document.getElementById("sectors");
+  var city = null;
+  var busy = false;
+
+  function showStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle("hidden", !msg);
+    statusEl.classList.toggle("err", !!isErr);
+  }
+
+  function unlocked(sector) {
+    if (sector === "pop") return true;
+    var need = LOCK[sector] || 0;
+    return (city && city.pop || 0) >= need;
+  }
+
+  function renderSectors() {
+    sectorsEl.innerHTML = "";
+    SECTORS.forEach(function (s) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = s;
+      btn.disabled = !unlocked(s);
+      btn.addEventListener("click", function () { support(s); });
+      sectorsEl.appendChild(btn);
+    });
+  }
+
+  function applyCity(c) {
+    city = c;
+    nameEl.textContent = c.name || slug;
+    popEl.textContent = "pop " + (c.pop || 0);
+    mapEl.style.backgroundImage = "url(" + apiBase + "/api/cities/" + encodeURIComponent(slug) + "/map.png)";
+    renderSectors();
+  }
+
+  function load() {
+    if (!slug) {
+      showStatus("Missing ?slug=", true);
+      return;
+    }
+    fetch(apiBase + "/api/cities/" + encodeURIComponent(slug))
+      .then(function (r) {
+        if (!r.ok) throw new Error("city not found");
+        return r.json();
+      })
+      .then(applyCity)
+      .catch(function (e) {
+        showStatus(e.message || "load failed", true);
+      });
+  }
+
+  function support(sector) {
+    if (busy || !slug) return;
+    busy = true;
+    showStatus("Supporting…");
+    fetch(apiBase + "/api/cities/" + encodeURIComponent(slug) + "/support", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sector: sector || "pop" }),
+    })
+      .then(function (r) {
+        var ct = (r.headers.get("Content-Type") || "").toLowerCase();
+        if (ct.indexOf("application/json") !== -1) {
+          return r.json().then(function (body) {
+            return { ok: r.ok, status: r.status, body: body || {}, text: "" };
+          });
+        }
+        return r.text().then(function (text) {
+          return { ok: r.ok, status: r.status, body: {}, text: text };
+        });
+      })
+      .then(function (res) {
+        if (res.status === 409 || res.body.already_voted) {
+          showStatus("Already supported today");
+          sectorsEl.classList.remove("open");
+          return;
+        }
+        if (!res.ok) {
+          showStatus(res.body.message || res.text || ("Error " + res.status), true);
+          return;
+        }
+        if (res.body.city) applyCity(res.body.city);
+        showStatus(res.body.message || "+1!");
+        sectorsEl.classList.remove("open");
+        mapEl.style.backgroundImage =
+          "url(" + apiBase + "/api/cities/" + encodeURIComponent(slug) + "/map.png?t=" + Date.now() + ")";
+      })
+      .catch(function () {
+        showStatus("Network error", true);
+      })
+      .finally(function () {
+        busy = false;
+      });
+  }
+
+  function openChooser() {
+    if (!city) return;
+    sectorsEl.classList.add("open");
+    showStatus("Pick a sector (or click pop)");
+  }
+
+  mapEl.addEventListener("click", openChooser);
+  mapEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openChooser();
+    }
+  });
+
+  load();
+})();
+  </script>
+</body>
+</html>

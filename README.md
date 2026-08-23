@@ -108,6 +108,22 @@ make storybook
 
 See [web/README.md](web/README.md).
 
+### City page (Next.js)
+
+```bash
+make frontend-dev
+# → http://localhost:3000/cities/<slug>
+```
+
+### Embed widget
+
+```html
+<div data-bitown-city="testcity" data-bitown-api="http://localhost:8080"></div>
+<script src="http://localhost:8080/embed/bitown.js" async></script>
+```
+
+See [embed/README.md](embed/README.md).
+
 ---
 
 ## Architecture

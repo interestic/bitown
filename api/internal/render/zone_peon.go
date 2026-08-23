@@ -24,52 +24,20 @@ func fillPeonIslandLots(inner []lotCell, pop, parkN int) {
 			islandIdx = append(islandIdx, i)
 		}
 	}
-	islandParkN := parkN
-	if islandParkN > len(islandIdx) {
-		islandParkN = len(islandIdx)
-	}
-	parkSet := make(map[int]struct{}, islandParkN)
-	if islandParkN > 0 {
-		parkOrder := append([]int(nil), islandIdx...)
-		sort.Slice(parkOrder, func(i, j int) bool {
-			a, b := inner[parkOrder[i]], inner[parkOrder[j]]
-			if a.dist != b.dist {
-				return a.dist > b.dist
-			}
-			return a.jitter > b.jitter
-		})
-		for i := 0; i < islandParkN; i++ {
-			idx := parkOrder[i]
-			parkSet[idx] = struct{}{}
-			inner[idx].use = lotPark
-		}
-	}
-	buildIdx := make([]int, 0, len(islandIdx)-islandParkN)
-	for _, i := range islandIdx {
-		if _, ok := parkSet[i]; ok {
-			continue
-		}
-		buildIdx = append(buildIdx, i)
-	}
 	fillN := pop
-	if fillN > len(buildIdx) {
-		fillN = len(buildIdx)
+	if fillN > len(islandIdx)-parkN {
+		fillN = len(islandIdx) - parkN
 	}
 	if fillN < 0 {
 		fillN = 0
 	}
-	placeSpacedBuildings(inner, buildIdx, fillN)
-	offIslandParkN := parkN - islandParkN
-	if offIslandParkN > 0 {
-		for i := len(inner) - 1; i >= 0 && offIslandParkN > 0; i-- {
-			if _, onIsland := parkSet[i]; onIsland {
-				continue
-			}
-			if inner[i].use == lotBuilding {
-				continue
-			}
+	placeSpacedBuildings(inner, islandIdx, fillN)
+	for i := range inner {
+		if inner[i].use == lotBuilding {
+			continue
+		}
+		if parkN > 0 && i >= len(inner)-parkN {
 			inner[i].use = lotPark
-			offIslandParkN--
 		}
 	}
 }
