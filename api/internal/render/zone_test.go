@@ -107,6 +107,28 @@ func TestPeonBuildingsCapAtDallePlates(t *testing.T) {
 	}
 }
 
+func TestPeonParksPreferIslandPlates(t *testing.T) {
+	city := &citycore.City{Slug: "peon-park", Pop: 39, Env: 400}
+	occ := lotOccupancy(city, buildCityGridForCity(city))
+	islandParks := 0
+	for pos, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		px, py := peonPlateOf(pos[0], pos[1])
+		ax, ay := peonPlateAnchorCell(px, py)
+		if pos[0] == ax && pos[1] == ay {
+			islandParks++
+		}
+	}
+	if islandParks == 0 {
+		t.Fatal("expected peon parks on island anchor plates")
+	}
+	if islandParks < 8 {
+		t.Fatalf("expected most peon parks on island plates, got %d", islandParks)
+	}
+}
+
 func TestLotOccupancyAddsParksWithEnv(t *testing.T) {
 	grid := buildCityGridForCity(&citycore.City{Slug: "park-city", Pop: 500})
 	plain := lotOccupancy(&citycore.City{Slug: "park-city", Pop: 500, Env: 0}, grid)
