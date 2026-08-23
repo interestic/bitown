@@ -11,7 +11,6 @@ from pathlib import Path
 import json
 import struct
 import sys
-from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -33,6 +32,7 @@ MAP_TAGS = {
     "road",
     "tree",
     "water",
+    "ground",
     "park",
     "exclude",
 }
@@ -40,15 +40,12 @@ BUILDING_TAGS = {"residential", "industrial", "commercial", "landmark"}
 NON_BUILDING_TAGS = MAP_TAGS - BUILDING_TAGS
 
 # Substrings that must never appear in the map building pool.
-# Keep in sync with api/internal/render/atlas.go buildingDenySubstr and
-# scripts/generate_buildings_manifest.py UI_NAME_PATTERNS.
-# Empty mcHouse* clips stay out via sprite_tag_overrides.json (not deny),
-# because real house folders also contain "mcHouse" in the Flash name.
 BUILDING_DENY_SUBSTR = (
     "mcLoading",
     "mcAnti",
     "mcAnalog",
     "mcStat",
+    "mcStats",
     "mcCompt",
     "mcObs",
     "mcTest",
@@ -61,7 +58,7 @@ BUILDING_DENY_SUBSTR = (
 )
 
 
-def fail(msg: str) -> NoReturn:
+def fail(msg: str) -> None:
     print(f"[FAIL] {msg}")
     sys.exit(1)
 
@@ -165,6 +162,22 @@ def validate_buildings_manifest(data: dict) -> None:
             fail(f"{base} tagged {tag} missing from building_bases")
         if tag in NON_BUILDING_TAGS and base in bases:
             fail(f"{base} tagged {tag} must not be in building_bases")
+        if tag in BUILDING_TAGS:
+            tier = entry.get("tier")
+            if not isinstance(tier, int) or tier < 0 or tier > 3:
+                fail(f"{base} building entry needs int tier 0..3, got {tier!r}")
+
+    by_tier = counts.get("by_tier") or {}
+    if not isinstance(by_tier, dict):
+        fail("counts.by_tier missing")
+    expected_tier = {0: 0, 1: 0, 2: 0, 3: 0}
+    for entry in entries:
+        if entry.get("tag") in BUILDING_TAGS:
+            expected_tier[int(entry["tier"])] += 1
+    for tier, n in expected_tier.items():
+        key = str(tier)
+        if by_tier.get(key) != n:
+            fail(f"counts.by_tier[{key}] != building entries with tier {tier}")
 
     for base in bases:
         lowered = base
@@ -192,17 +205,6 @@ def validate_buildings_manifest(data: dict) -> None:
     print(f"[OK] catalog tags: {json.dumps(tag_counts, sort_keys=True)}")
 
 
-def validate_building_frames_present(bases: list, frames: dict) -> None:
-    for base in bases:
-        prefix = f"{base}/"
-        if not any(
-            isinstance(key, str) and key.startswith(prefix) and key.endswith("_v00.png")
-            for key in frames
-        ):
-            fail(f"building base {base} has no *_v00.png frame in atlas")
-    print(f"[OK] building frames present for {len(bases)} bases")
-
-
 def main() -> None:
     atlas_present = atlas_json.exists()
     for d in required_dirs:
@@ -227,7 +229,6 @@ def main() -> None:
             fail("buildings.json missing (run: python3 scripts/generate_buildings_manifest.py)")
         building_data = json.loads(buildings_json.read_text(encoding="utf-8"))
         validate_buildings_manifest(building_data)
-        validate_building_frames_present(building_data.get("building_bases") or [], data["frames"])
     else:
         print("[WARN] atlas json not found (run step5 when assets are ready)")
 

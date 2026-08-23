@@ -73,10 +73,9 @@ def pack_frames(frames: list[dict]) -> tuple[Image.Image, dict]:
 def main() -> None:
     files = sorted(SRC.rglob("*.png"))
     if not files:
-        for path in (OUT_PNG, OUT_JSON):
-            if path.exists():
-                path.unlink()
-        raise SystemExit("no variant sprites found; removed stale atlas outputs")
+        OUT_PNG.unlink(missing_ok=True)
+        OUT_JSON.unlink(missing_ok=True)
+        raise SystemExit("no variant sprites found")
 
     frames = []
     for path in files:

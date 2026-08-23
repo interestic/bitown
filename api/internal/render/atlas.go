@@ -2,13 +2,10 @@ package render
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"image"
-	"image/draw"
 	_ "image/png"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,18 +39,24 @@ type catalogEntry struct {
 	Base  string `json:"base"`
 	Group string `json:"group"`
 	Tag   string `json:"tag"`
+	Tier  *int   `json:"tier,omitempty"`
 }
 
 const (
 	TagResidential = "residential"
 	TagIndustrial  = "industrial"
 	TagCommercial  = "commercial"
-	TagLandmark    = "landmark"
-	TagRoad        = "road"
-	TagTree        = "tree"
-	TagWater       = "water"
-	TagPark        = "park"
-	TagExclude     = "exclude"
+	// TagLandmark is catalogued for growth placement (high pop mix); unused as a zone tag.
+	TagLandmark = "landmark"
+	TagRoad     = "road"
+	TagTree     = "tree"
+	TagWater    = "water"
+	// TagGround is stamped as 4×4 mcDalle plates (peon / Caerphilly field).
+	TagGround = "ground"
+	// TagPark is catalogued but intentionally unused in M1 (count may be 0).
+	// Park lots are drawn with TagTree sprites instead.
+	TagPark    = "park"
+	TagExclude = "exclude"
 )
 
 var mapBuildingTags = map[string]struct{}{
@@ -64,8 +67,6 @@ var mapBuildingTags = map[string]struct{}{
 }
 
 // Tokens that must never enter the map building pool, even if the manifest is stale.
-// Keep in sync with scripts/check_assets.py BUILDING_DENY_SUBSTR.
-// Empty mcHouse clips are excluded via overrides, not deny (real houses share the token).
 var buildingDenySubstr = []string{
 	"mcLoading", "mcAnti", "mcAnalog", "mcStat", "mcCompt", "mcObs",
 	"mcTest", "mcBg", "mcDalle", "mcRoad", "brushWood", "StatPanel", "StatusBar",
@@ -77,7 +78,9 @@ type Atlas struct {
 	Frames        map[string]frameRect
 	BuildingBases []string
 	BasesByTag    map[string][]string
-	buildingCount uint32
+	// TierByFolder maps sprite folder base (e.g. sprites/Foo) to growth tier 0..3.
+	// Missing keys fall back to DefaultBuildingTier (1) in pool selection.
+	TierByFolder  map[string]int
 	VariantSuffix func(seed uint32) string
 	sourceDir     string
 	revision      string
@@ -180,13 +183,14 @@ func loadAtlasFromRoot(base string, root *os.Root, revision string) (*Atlas, err
 	if err != nil {
 		return nil, err
 	}
+	catalog = filterOversizedSingleLotBuildings(catalog, meta.Frames)
 
 	return &Atlas{
 		Image:         img,
 		Frames:        meta.Frames,
 		BuildingBases: catalog.buildingBases,
 		BasesByTag:    catalog.basesByTag,
-		buildingCount: buildingBaseCount(catalog.buildingBases),
+		TierByFolder:  catalog.tierByFolder,
 		sourceDir:     base,
 		revision:      revision,
 		VariantSuffix: func(seed uint32) string {
@@ -244,109 +248,6 @@ func atlasRootExists(dir string) bool {
 	}
 	_ = f.Close()
 	return true
-}
-
-type loadedCatalog struct {
-	buildingBases []string
-	basesByTag    map[string][]string
-}
-
-func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, error) {
-	data, err := readRootFile(root, "buildings.json")
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return loadedCatalog{}, fmt.Errorf("%w: run scripts/generate_buildings_manifest.py", ErrBuildingsManifestMissing)
-		}
-		return loadedCatalog{}, fmt.Errorf("read buildings manifest: %w", err)
-	}
-
-	var manifest buildingsManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return loadedCatalog{}, fmt.Errorf("parse buildings manifest: %w", err)
-	}
-	if manifest.Version < 2 {
-		return loadedCatalog{}, fmt.Errorf("buildings.json version must be >= 2")
-	}
-	if len(manifest.BuildingBases) == 0 {
-		return loadedCatalog{}, ErrBuildingsManifestEmpty
-	}
-	if len(manifest.Entries) == 0 {
-		return loadedCatalog{}, fmt.Errorf("buildings.json has no catalog entries")
-	}
-
-	tagByFolder := make(map[string]string, len(manifest.Entries))
-	for _, entry := range manifest.Entries {
-		if entry.Base == "" || entry.Tag == "" {
-			continue
-		}
-		tagByFolder[entry.Base] = entry.Tag
-	}
-
-	allowed := make(map[string]struct{}, len(manifest.BuildingBases))
-	for _, folderBase := range manifest.BuildingBases {
-		if deniedBuildingFolder(folderBase) {
-			continue
-		}
-		if tag, ok := tagByFolder[folderBase]; ok {
-			if _, building := mapBuildingTags[tag]; !building {
-				continue
-			}
-		} else {
-			continue
-		}
-		allowed[folderBase] = struct{}{}
-	}
-
-	filtered := make([]string, 0, len(frameBases))
-	for _, frameBase := range frameBases {
-		folder := spriteFolderBase(frameBase)
-		if _, ok := allowed[folder]; !ok {
-			continue
-		}
-		if deniedBuildingFolder(folder) {
-			continue
-		}
-		filtered = append(filtered, frameBase)
-	}
-	if len(filtered) == 0 {
-		return loadedCatalog{}, fmt.Errorf("no atlas frames matched buildings manifest")
-	}
-
-	if len(tagByFolder) == 0 {
-		for tag, folders := range manifest.BasesByTag {
-			for _, folder := range folders {
-				tagByFolder[folder] = tag
-			}
-		}
-	}
-
-	byTag := make(map[string][]string)
-	for _, frameBase := range frameBases {
-		folder := spriteFolderBase(frameBase)
-		tag, ok := tagByFolder[folder]
-		if !ok || tag == "" {
-			continue
-		}
-		if _, building := mapBuildingTags[tag]; building {
-			// Building draws must stay inside building_bases ∩ deny filter.
-			if _, ok := allowed[folder]; !ok {
-				continue
-			}
-		}
-		byTag[tag] = append(byTag[tag], frameBase)
-	}
-
-	return loadedCatalog{buildingBases: filtered, basesByTag: byTag}, nil
-}
-
-func deniedBuildingFolder(folder string) bool {
-	lower := strings.ToLower(folder)
-	for _, token := range buildingDenySubstr {
-		if strings.Contains(lower, strings.ToLower(token)) {
-			return true
-		}
-	}
-	return false
 }
 
 // BasesForTag returns atlas folder keys for a catalog tag (road, tree, ...).
@@ -434,11 +335,15 @@ func (a *Atlas) PickKeyForTag(tag string, seed uint32) string {
 	return base + "_v00.png"
 }
 
-func buildingBaseCount(bases []string) uint32 {
-	if len(bases) == 0 {
-		return 0
+// PickBuildingKeyForTag picks a building frame for a zone tag.
+// Contract: try the zone tag, then residential; still empty means callers
+// draw a rectangle fallback (not the full BuildingBases pool).
+func (a *Atlas) PickBuildingKeyForTag(tag string, seed uint32) string {
+	key := a.PickKeyForTag(tag, seed)
+	if key == "" {
+		key = a.PickKeyForTag(TagResidential, seed)
 	}
-	return uint32(len(bases)) //#nosec G115 -- len(bases) bounded by on-disk atlas manifest
+	return key
 }
 
 func readRootFile(root *os.Root, name string) ([]byte, error) {
@@ -460,27 +365,4 @@ func spriteFolderBase(frameBase string) string {
 
 func (a *Atlas) frameKey(base, variantSuffix string) string {
 	return base + variantSuffix
-}
-
-func (a *Atlas) drawFrameAtFoot(dst *image.RGBA, key string, footX, footY int) bool {
-	rect, ok := a.Frames[key]
-	if !ok || rect.W == 0 || rect.H == 0 {
-		return false
-	}
-
-	// Anchors are required metadata from the packer (including legitimate 0,0
-	// for empty frames). Do not reinterpret (0,0) as "missing".
-	anchorX, anchorY := rect.AnchorX, rect.AnchorY
-	dstX := footX - anchorX
-	dstY := footY - anchorY
-	srcPt := image.Pt(rect.X, rect.Y)
-	dstRect := image.Rect(dstX, dstY, dstX+rect.W, dstY+rect.H)
-	draw.Draw(dst, dstRect, a.Image, srcPt, draw.Over)
-	return true
-}
-
-func (a *Atlas) pickBuildingKey(seed uint32) string {
-	idx := seed % a.buildingCount
-	base := a.BuildingBases[idx]
-	return base + "_v00.png"
 }

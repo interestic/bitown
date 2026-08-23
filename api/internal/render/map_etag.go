@@ -12,7 +12,7 @@ import (
 	"github.com/interestic/bitown/internal/citycore"
 )
 
-const mapRendererVersion = "map-v19"
+const mapRendererVersion = "map-v24"
 
 var (
 	ErrAtlasNotFound            = errors.New("sprites-v1 atlas directory not found")
@@ -29,8 +29,13 @@ func MapEntityTag(city *citycore.City) (string, error) {
 	}
 
 	sum := sha256.New()
-	_, _ = fmt.Fprintf(sum, "%s/%s/%s/%d/%d/%d/%d/%d/%d/%d", mapRendererVersion, mode, revision, city.Pop, city.Ind, city.Tra, city.Sec, city.Env, city.Com, len(city.Slug))
-	_, _ = sum.Write([]byte(city.Slug))
+	slug := city.Slug.String()
+	_, _ = fmt.Fprintf(sum, "%s/%s/%s", mapRendererVersion, mode, revision)
+	if shade := groundShadeIdentity(); shade != "" {
+		_, _ = fmt.Fprintf(sum, "/%s", shade)
+	}
+	_, _ = fmt.Fprintf(sum, "/%d/%d/%d/%d/%d/%d/%d", city.Pop, city.Ind, city.Tra, city.Sec, city.Env, city.Com, len(slug))
+	_, _ = sum.Write([]byte(slug))
 	return `"` + hex.EncodeToString(sum.Sum(nil)[:16]) + `"`, nil
 }
 

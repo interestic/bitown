@@ -1,0 +1,366 @@
+:root {
+  color-scheme: light;
+  --bg: #f3efe6;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --card: #fffcf5;
+  --line: #e7e0d4;
+  --accent: #0f766e;
+  --anchor: #dc2626;
+  --font: "IBM Plex Sans", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at top left, #fff8e7 0%, transparent 45%),
+    radial-gradient(ellipse at bottom right, #e8f5f2 0%, transparent 40%),
+    var(--bg);
+}
+
+.catalog-shell {
+  min-height: 100vh;
+  padding: 28px 32px 64px;
+}
+
+.catalog-shell--error {
+  color: #9f1239;
+}
+
+.catalog-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.catalog-header h1 {
+  margin: 0 0 6px;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.catalog-header__sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.catalog-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.catalog-stats dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.catalog-stats dd {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.catalog-stats__bases {
+  margin-left: 2px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.tag-section {
+  margin-bottom: 36px;
+}
+
+.tag-section__header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tag-section__header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.tag-section__count {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.tag-section__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.object-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.object-grid--plots {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.object-grid--road-grid {
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+}
+
+.object-card--grid .plot-thumb--grid {
+  min-height: 220px;
+}
+
+.object-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.object-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.object-card__name {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.object-card__note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.object-card--missing {
+  min-height: 80px;
+  justify-content: center;
+}
+
+.pattern-blurb {
+  margin: 0 0 8px;
+  max-width: 72ch;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.pattern-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 10px;
+  max-width: 72ch;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.pattern-original {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 14px;
+  max-width: 80ch;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.pattern-extras {
+  margin: 20px 0 12px;
+  font-size: 0.95rem;
+}
+
+.pattern-extras--section {
+  margin-top: 28px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.road-group {
+  margin-bottom: 8px;
+}
+
+.road-group--adjacent {
+  margin-top: 4px;
+}
+
+.road-group .pattern-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.object-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.badge--muted {
+  color: var(--muted);
+}
+
+.badge--pool {
+  color: #065f46;
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+
+.badge--tag {
+  text-transform: lowercase;
+}
+
+.badge--residential {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+}
+
+.badge--industrial {
+  background: #f4f4f5;
+  border-color: #d4d4d8;
+  color: #3f3f46;
+}
+
+.badge--commercial {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.badge--tree,
+.badge--park {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.badge--water {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.badge--road {
+  background: #fafaf9;
+  border-color: #d6d3d1;
+  color: #44403c;
+}
+
+.badge--ground {
+  background: #fefce8;
+  border-color: #fde68a;
+  color: #854d0e;
+}
+
+.badge--pattern {
+  flex: none;
+  color: #0f766e;
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.badge--exclude {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.sprite-thumb {
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  background:
+    linear-gradient(45deg, #ebe6dc 25%, transparent 25%) -6px 0 / 12px 12px,
+    linear-gradient(-45deg, #ebe6dc 25%, transparent 25%) -6px 0 / 12px 12px,
+    linear-gradient(45deg, transparent 75%, #ebe6dc 75%) -6px 0 / 12px 12px,
+    linear-gradient(-45deg, transparent 75%, #ebe6dc 75%) -6px 0 / 12px 12px,
+    #f8f5ee;
+  border-radius: 8px;
+  border: 1px dashed #d6d3d1;
+  overflow: hidden;
+}
+
+.plot-thumb {
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  background:
+    radial-gradient(ellipse at 50% 80%, #d7ec9a 0%, transparent 55%),
+    linear-gradient(#c5dff0, #dbeaf4);
+  border-radius: 8px;
+  border: 1px dashed #b7c9d4;
+  overflow: hidden;
+}
+
+.plot-thumb__stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.sprite-thumb__stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.sprite-thumb__anchor {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--anchor);
+  box-shadow: 0 0 0 1px #fff;
+  pointer-events: none;
+}
+
+.hint {
+  color: var(--muted);
+}

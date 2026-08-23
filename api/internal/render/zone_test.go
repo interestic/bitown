@@ -7,7 +7,7 @@ import (
 )
 
 func TestLotOccupancyFillsFromCenter(t *testing.T) {
-	grid := buildCityGrid("zone-city")
+	grid := buildCityGridForCity(&citycore.City{Slug: "zone-city", Pop: 500})
 	empty := lotOccupancy(&citycore.City{Slug: "zone-city", Pop: 0}, grid)
 	full := lotOccupancy(&citycore.City{Slug: "zone-city", Pop: 500}, grid)
 
@@ -29,7 +29,8 @@ func TestLotOccupancyFillsFromCenter(t *testing.T) {
 				fullMaxBuildingDist = d
 			}
 		}
-		if lot.use == lotEmpty && d < fullMinEmptyDist {
+		// Interior empties for center-out comparison (curb setback is separate).
+		if lot.use == lotEmpty && !lotTouchesRoad(grid, pos[0], pos[1]) && d < fullMinEmptyDist {
 			fullMinEmptyDist = d
 		}
 	}
@@ -47,8 +48,89 @@ func TestLotOccupancyFillsFromCenter(t *testing.T) {
 	}
 }
 
+func TestLotOccupancyPeonSpreadsBuildings(t *testing.T) {
+	city := &citycore.City{Slug: "testcity", Pop: 8}
+	grid := buildCityGridForCity(city)
+	occ := lotOccupancy(city, grid)
+
+	var buildings []lotCell
+	plates := make(map[[2]int]int)
+	for _, lot := range occ {
+		if lot.use != lotBuilding {
+			continue
+		}
+		if !inPeonIsland(lot.x, lot.y) {
+			t.Fatalf("peon building outside island at (%d,%d)", lot.x, lot.y)
+		}
+		px, py := peonPlateOf(lot.x, lot.y)
+		ax, ay := peonPlateAnchorCell(px, py)
+		if lot.x != ax || lot.y != ay {
+			t.Fatalf("peon building at (%d,%d) want plate anchor (%d,%d)", lot.x, lot.y, ax, ay)
+		}
+		plates[[2]int{px, py}]++
+		buildings = append(buildings, lot)
+	}
+	if len(buildings) != 8 {
+		t.Fatalf("pop=8 peon should place 8 buildings, got %d", len(buildings))
+	}
+	if len(plates) != 8 {
+		t.Fatalf("expected 1 building per dalle plate, got %d plates for %d buildings", len(plates), len(buildings))
+	}
+
+	again := lotOccupancy(city, grid)
+	for pos, lot := range occ {
+		got := again[pos]
+		if got.use != lot.use || got.x != lot.x || got.y != lot.y {
+			t.Fatalf("peon occupancy must be deterministic at %v: %+v vs %+v", pos, lot, got)
+		}
+	}
+}
+
+func TestPeonBuildingsCapAtDallePlates(t *testing.T) {
+	city := &citycore.City{Slug: "peon-dense", Pop: 39}
+	occ := lotOccupancy(city, buildCityGridForCity(city))
+	n := 0
+	plates := make(map[[2]int]struct{})
+	for _, lot := range occ {
+		if lot.use != lotBuilding {
+			continue
+		}
+		n++
+		px, py := peonPlateOf(lot.x, lot.y)
+		plates[[2]int{px, py}] = struct{}{}
+	}
+	if n != peonPlateCount() {
+		t.Fatalf("peon pop=39 should cap at %d dalle plates, got %d", peonPlateCount(), n)
+	}
+	if len(plates) != n {
+		t.Fatalf("expected 1 building per plate, got %d plates for %d buildings", len(plates), n)
+	}
+}
+
+func TestPeonParksPreferIslandPlates(t *testing.T) {
+	city := &citycore.City{Slug: "peon-park", Pop: 39, Env: 400}
+	occ := lotOccupancy(city, buildCityGridForCity(city))
+	islandParks := 0
+	for pos, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		px, py := peonPlateOf(pos[0], pos[1])
+		ax, ay := peonPlateAnchorCell(px, py)
+		if pos[0] == ax && pos[1] == ay {
+			islandParks++
+		}
+	}
+	if islandParks == 0 {
+		t.Fatal("expected peon parks on island anchor plates")
+	}
+	if islandParks < 8 {
+		t.Fatalf("expected most peon parks on island plates, got %d", islandParks)
+	}
+}
+
 func TestLotOccupancyAddsParksWithEnv(t *testing.T) {
-	grid := buildCityGrid("park-city")
+	grid := buildCityGridForCity(&citycore.City{Slug: "park-city", Pop: 500})
 	plain := lotOccupancy(&citycore.City{Slug: "park-city", Pop: 500, Env: 0}, grid)
 	green := lotOccupancy(&citycore.City{Slug: "park-city", Pop: 500, Env: 400}, grid)
 	plainParks, greenParks := 0, 0
@@ -65,6 +147,55 @@ func TestLotOccupancyAddsParksWithEnv(t *testing.T) {
 	if greenParks <= plainParks {
 		t.Fatalf("expected env to add parks, got %d vs %d", greenParks, plainParks)
 	}
+	// big_city greenery: env=400 should plant dozens of trees (dedicated + scatter).
+	if greenParks < 40 {
+		t.Fatalf("env=400 should place many trees, got %d", greenParks)
+	}
+	if plainParks != 0 {
+		t.Fatalf("env=0 must not scatter trees, got %d parks", plainParks)
+	}
+}
+
+func TestLotOccupancyScattersRoadsideTrees(t *testing.T) {
+	grid := buildCityGridForCity(&citycore.City{Slug: "curb-trees", Pop: 500})
+	occ := lotOccupancy(&citycore.City{Slug: "curb-trees", Pop: 500, Env: 400}, grid)
+	curbParks := 0
+	for pos, lot := range occ {
+		if lot.use == lotPark && lotTouchesRoad(grid, pos[0], pos[1]) {
+			curbParks++
+		}
+	}
+	if curbParks < 20 {
+		t.Fatalf("expected roadside tree scatter, got %d curb parks", curbParks)
+	}
+}
+
+func TestIndustrialZonePlacesBuildings(t *testing.T) {
+	requireAtlasFiles(t)
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatal(err)
+	}
+	city := &citycore.City{Slug: "ind-visible", Pop: 500, Ind: 50}
+	grid := buildCityGridForCity(&citycore.City{Slug: city.Slug, Pop: 500})
+	occ := lotOccupancy(city, grid)
+	indBuild := 0
+	for pos, lot := range occ {
+		if lot.use != lotBuilding || lot.tag != TagIndustrial {
+			continue
+		}
+		if lotTouchesRoad(grid, pos[0], pos[1]) {
+			t.Fatalf("industrial building on curb lot (%d,%d)", pos[0], pos[1])
+		}
+		key := atlas.PickBuildingKeyForLot(city, lot.tag, pos[0], pos[1], hashCell(city.Slug.String(), pos[0], pos[1]))
+		if key == "" || !frameBelongsToTag(key, atlas.BasesForTag(TagIndustrial)) {
+			t.Fatalf("expected industrial sprite at (%d,%d), got %q", pos[0], pos[1], key)
+		}
+		indBuild++
+	}
+	if indBuild == 0 {
+		t.Fatal("Ind>0 must place at least one industrial building on a non-curb lot")
+	}
 }
 
 func TestZoneTagUsesSectors(t *testing.T) {
@@ -75,6 +206,20 @@ func TestZoneTagUsesSectors(t *testing.T) {
 	ind := zoneTag(&citycore.City{Ind: 10}, 0, 5)
 	if ind != TagIndustrial {
 		t.Fatalf("edge with ind should be industrial, got %s", ind)
+	}
+	// Outer ring width scales with map (rim=mapCols/10); on 40×40 rim=4 so x=2
+	// is industrial and the first interior lot past the rim stays residential.
+	ring2 := zoneTag(&citycore.City{Ind: 10}, 2, mapRows/2)
+	if ring2 != TagIndustrial {
+		t.Fatalf("x=2 with ind should be industrial, got %s", ring2)
+	}
+	rim := mapCols / 10
+	if rim < 2 {
+		rim = 2
+	}
+	midOuter := zoneTag(&citycore.City{Ind: 10}, rim, mapRows/2)
+	if midOuter != TagResidential {
+		t.Fatalf("x=%d with ind should stay residential, got %s", rim, midOuter)
 	}
 	res := zoneTag(&citycore.City{}, mapCols/2, mapRows/2)
 	if res != TagResidential {
@@ -89,19 +234,26 @@ func TestSectorZonesPickTaggedSprites(t *testing.T) {
 		t.Fatalf("load atlas: %v", err)
 	}
 	city := &citycore.City{Slug: "zone-pick", Pop: 500, Com: 50, Ind: 50}
-	comKey := atlas.PickKeyForTag(zoneTag(city, mapCols/2, mapRows/2), 1)
-	indKey := atlas.PickKeyForTag(zoneTag(city, 0, 5), 1)
+	comTag := zoneTag(city, mapCols/2, mapRows/2)
+	indTag := zoneTag(city, 0, 5)
+	comKey := atlas.PickBuildingKeyForTag(comTag, 1)
+	indKey := atlas.PickBuildingKeyForTag(indTag, 1)
 	if comKey == "" || indKey == "" {
 		t.Fatalf("expected tagged picks, com=%q ind=%q", comKey, indKey)
 	}
 	if comKey == indKey {
 		t.Fatalf("commercial and industrial picks should differ, both %q", comKey)
 	}
-	if !frameBelongsToTag(comKey, atlas.BasesForTag(TagCommercial)) {
-		t.Fatalf("commercial pick %q not in commercial bases", comKey)
-	}
-	if !frameBelongsToTag(indKey, atlas.BasesForTag(TagIndustrial)) {
+	if indTag == TagIndustrial && !frameBelongsToTag(indKey, atlas.BasesForTag(TagIndustrial)) {
 		t.Fatalf("industrial pick %q not in industrial bases", indKey)
+	}
+	// Commercial multi-tile clips are filtered for 1-lot maps; fallback may be residential.
+	if len(atlas.BasesForTag(TagCommercial)) > 0 {
+		if !frameBelongsToTag(comKey, atlas.BasesForTag(TagCommercial)) {
+			t.Fatalf("commercial pick %q not in commercial bases", comKey)
+		}
+	} else if !frameBelongsToTag(comKey, atlas.BasesForTag(TagResidential)) {
+		t.Fatalf("commercial fallback %q not in residential bases", comKey)
 	}
 }
 
@@ -113,6 +265,43 @@ func frameBelongsToTag(frameKey string, bases []string) bool {
 		}
 	}
 	return false
+}
+
+func TestEmptyZoneTagFallsBackToResidential(t *testing.T) {
+	atlas := &Atlas{
+		BasesByTag: map[string][]string{
+			TagResidential: {"sprites/House_a"},
+			TagIndustrial:  {},
+		},
+	}
+	if got := atlas.PickKeyForTag(TagIndustrial, 1); got != "" {
+		t.Fatalf("expected empty industrial catalog to return \"\", got %q", got)
+	}
+	got := atlas.PickBuildingKeyForTag(TagIndustrial, 1)
+	want := "sprites/House_a_v00.png"
+	if got != want {
+		t.Fatalf("empty industrial should fall back to residential, got %q want %q", got, want)
+	}
+}
+
+func TestEmptyResidentialFallsBackToEmptyKey(t *testing.T) {
+	atlas := &Atlas{
+		BasesByTag: map[string][]string{
+			TagResidential: {},
+			TagIndustrial:  {},
+			TagCommercial:  {"sprites/Shop_a"},
+		},
+	}
+	if got := atlas.PickBuildingKeyForTag(TagIndustrial, 7); got != "" {
+		t.Fatalf("empty industrial+residential should leave key empty for rectangle fallback, got %q", got)
+	}
+	if got := atlas.PickBuildingKeyForTag(TagResidential, 3); got != "" {
+		t.Fatalf("empty residential should leave key empty, got %q", got)
+	}
+	// Commercial still resolves when its catalog is non-empty.
+	if got := atlas.PickBuildingKeyForTag(TagCommercial, 2); got != "sprites/Shop_a_v00.png" {
+		t.Fatalf("commercial with bases should pick its own frame, got %q", got)
+	}
 }
 
 func TestMapEntityTagChangesWithEnv(t *testing.T) {

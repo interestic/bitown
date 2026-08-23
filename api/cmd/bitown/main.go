@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -67,9 +66,12 @@ func main() {
 		r.Get("/{slug}/map.png", cityHandler.MapPNG)
 		r.Post("/{slug}/support", cityHandler.Support)
 	})
-	if isDebugModeEnabled() {
+	if city.DebugModeEnabled() {
 		r.Get("/api/debug/cities/{slug}", cityHandler.DebugGet)
-		slog.Info("debug mode enabled", "route", "/api/debug/cities/{slug}")
+		slog.Info("debug mode enabled",
+			"route", "/api/debug/cities/{slug}",
+			"map_query", "pop,ind,tra,sec,env,com on /api/cities/{slug}/map.png",
+		)
 	}
 	r.Get("/api/rankings", cityHandler.Rankings)
 	r.Get("/badge/{slug}.svg", cityHandler.Badge)
@@ -123,11 +125,3 @@ func mustEnv(key string) string {
 	return v
 }
 
-func isDebugModeEnabled() bool {
-	env := strings.TrimSpace(strings.ToLower(os.Getenv("ENV")))
-	if env == "production" || env == "prod" {
-		return false
-	}
-	v := strings.TrimSpace(strings.ToLower(os.Getenv("DEBUG_MODE")))
-	return v == "true" || v == "1" || v == "yes"
-}

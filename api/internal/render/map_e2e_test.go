@@ -21,7 +21,7 @@ func TestE2E_BuildingsStayOffRoadCells(t *testing.T) {
 		t.Fatal("expected RGBA map")
 	}
 
-	grid := buildCityGrid(city.Slug)
+	grid := buildCityGridForCity(&citycore.City{Slug: city.Slug, Pop: 500})
 	occupancy := lotOccupancy(city, grid)
 
 	for y := 0; y < mapRows; y++ {
@@ -74,7 +74,7 @@ func TestE2E_LotBuildingsAppearOffRoads(t *testing.T) {
 		t.Fatal("expected RGBA map")
 	}
 
-	grid := buildCityGrid(city.Slug)
+	grid := buildCityGridForCity(&citycore.City{Slug: city.Slug, Pop: 500})
 	occupancy := lotOccupancy(city, grid)
 	foundBuilding := false
 	for y := 0; y < mapRows; y++ {
@@ -112,7 +112,7 @@ func isFallbackBuildingColor(c color.RGBA) bool {
 func TestE2E_IsoRoadDiamondsNotSquareCells(t *testing.T) {
 	forceFallbackAtlas(t)
 
-	city := &citycore.City{Slug: "e2e-iso-diamond", Pop: 0}
+	city := &citycore.City{Slug: "e2e-iso-diamond", Pop: 120}
 	data, err := BuildCityMapPNG(city)
 	if err != nil {
 		t.Fatalf("render: %v", err)
@@ -125,7 +125,7 @@ func TestE2E_IsoRoadDiamondsNotSquareCells(t *testing.T) {
 		t.Fatal("iso map must not be the legacy 320x320 square canvas")
 	}
 
-	grid := buildCityGrid(city.Slug)
+	grid := buildCityGridForCity(city)
 	foundRoad := false
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
@@ -138,7 +138,7 @@ func TestE2E_IsoRoadDiamondsNotSquareCells(t *testing.T) {
 				t.Fatalf("road diamond center (%d,%d) want road, got %+v", x, y, center)
 			}
 			// Outside the diamond, laterally from the top vertex, should stay grass
-			// (would be inside a 32x16 AABB / old square cell).
+			// (would be inside a 24x12 AABB / old square cell).
 			outside := img.RGBAAt(topX+isoTileW/2-1, topY+1)
 			if outside == roadColor {
 				t.Fatalf("pixel beside diamond tip at (%d,%d) should not be road (square-cell leak)", x, y)

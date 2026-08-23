@@ -28,22 +28,28 @@ MAP_TAGS = (
     "road",
     "tree",
     "water",
+    "ground",
     "park",
     "exclude",
 )
 BUILDING_TAGS = frozenset({"residential", "industrial", "commercial", "landmark"})
 
+# Growth placement tiers (docs/map-building-growth.md): 0=hut/low … 3=landmark.
+DEFAULT_TIER = 1
+MAX_TIER = 3
+# bbox_h at or above this is "突出した高さ" → tier 3 even without the landmark tag.
+TALL_TIER3_H = 80
+
 UI_NAME_PATTERNS = (
     re.compile(r"mcLoading", re.I),
-    re.compile(r"mcAnti", re.I),
+    re.compile(r"mcAntiPanel", re.I),
+    re.compile(r"mcAntiLayer", re.I),
     re.compile(r"mcAnalog", re.I),
-    re.compile(r"mcStat", re.I),
+    re.compile(r"mcStatSlot", re.I),
+    re.compile(r"mcStats", re.I),
     re.compile(r"mcCompt", re.I),
-    re.compile(r"mcObs", re.I),
     re.compile(r"mcTest", re.I),
     re.compile(r"mcBg", re.I),
-    re.compile(r"mcDalle", re.I),
-    re.compile(r"brushWood", re.I),
     re.compile(r"StatPanel", re.I),
     re.compile(r"StatusBar", re.I),
 )
@@ -56,24 +62,15 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
     max_opaque = 0
     max_bbox_h = 0
     max_bbox_w = 0
-    best_counts = {
-        "blue": 0,
-        "cyan": 0,
-        "yellow": 0,
-        "green": 0,
-        "black": 0,
-        "gray": 0,
-        "semi": 0,
-        "strong": 0,
-    }
+    blues = yellows = greens = blacks = semi = strong = cyan = grays = 0
     canvas_pixels = 0
+    total_opaque = 0
     for png in folder.glob("*.png"):
         im = Image.open(png).convert("RGBA")
         pixels = im.load()
         w, h = im.size
         canvas_pixels = max(canvas_pixels, w * h)
         opaque = 0
-        counts = {k: 0 for k in best_counts}
         for y in range(h):
             for x in range(w):
                 r, g, b, a = pixels[x, y]
@@ -81,40 +78,39 @@ def sprite_metrics(folder: Path) -> tuple[int, int, int, dict[str, float]]:
                     continue
                 opaque += 1
                 if b > r + 30 and b > g + 10:
-                    counts["blue"] += 1
+                    blues += 1
                 if b > r + 25 and g > r + 10 and b > 120 and g > 90:
-                    counts["cyan"] += 1
+                    cyan += 1
                 if r > 180 and g > 150 and b < 120:
-                    counts["yellow"] += 1
+                    yellows += 1
                 if g > r + 15 and g > b + 15:
-                    counts["green"] += 1
+                    greens += 1
                 if r < 35 and g < 35 and b < 35:
-                    counts["black"] += 1
+                    blacks += 1
                 if abs(r - g) < 15 and abs(g - b) < 15 and r < 160:
-                    counts["gray"] += 1
+                    grays += 1
                 if 16 < a < 180:
-                    counts["semi"] += 1
+                    semi += 1
                 if a >= 220:
-                    counts["strong"] += 1
-        if opaque > max_opaque:
-            max_opaque = opaque
-            best_counts = counts
+                    strong += 1
+        max_opaque = max(max_opaque, opaque)
+        total_opaque += opaque
         bbox = im.getbbox()
         if bbox:
             max_bbox_h = max(max_bbox_h, bbox[3] - bbox[1])
             max_bbox_w = max(max_bbox_w, bbox[2] - bbox[0])
 
-    denom = max(max_opaque, 1)
+    denom = max(total_opaque, 1)
     fill = max_opaque / max(canvas_pixels, 1)
     colors = {
-        "blue_ratio": best_counts["blue"] / denom,
-        "cyan_ratio": best_counts["cyan"] / denom,
-        "yellow_ratio": best_counts["yellow"] / denom,
-        "green_ratio": best_counts["green"] / denom,
-        "black_ratio": best_counts["black"] / denom,
-        "gray_ratio": best_counts["gray"] / denom,
-        "semi_ratio": best_counts["semi"] / denom,
-        "strong_ratio": best_counts["strong"] / denom,
+        "blue_ratio": blues / denom,
+        "cyan_ratio": cyan / denom,
+        "yellow_ratio": yellows / denom,
+        "green_ratio": greens / denom,
+        "black_ratio": blacks / denom,
+        "gray_ratio": grays / denom,
+        "semi_ratio": semi / denom,
+        "strong_ratio": strong / denom,
         "fill_ratio": fill,
     }
     return max_opaque, max_bbox_h, max_bbox_w, colors
@@ -179,9 +175,9 @@ def classify(name: str, opaque: int, bbox_h: int, bbox_w: int, colors: dict[str,
     return "other", "exclude"
 
 
-def load_overrides(path: Path) -> dict[str, str]:
+def load_overrides(path: Path) -> tuple[dict[str, str], dict[str, int]]:
     if not path.exists():
-        return {}
+        return {}, {}
     data = json.loads(path.read_text(encoding="utf-8"))
     tags = data.get("tags") or {}
     out: dict[str, str] = {}
@@ -189,15 +185,21 @@ def load_overrides(path: Path) -> dict[str, str]:
         if tag not in MAP_TAGS:
             raise SystemExit(f"override {base} has unknown tag {tag!r}")
         out[str(base)] = str(tag)
-    return out
+    tiers_raw = data.get("tiers") or {}
+    tiers: dict[str, int] = {}
+    for base, tier in tiers_raw.items():
+        if isinstance(tier, bool):
+            raise SystemExit(f"override tier {base} must be int 0..{MAX_TIER}, got {tier!r}")
+        if not isinstance(tier, int) or tier < 0 or tier > MAX_TIER:
+            raise SystemExit(f"override tier {base} must be int 0..{MAX_TIER}, got {tier!r}")
+        tiers[str(base)] = tier
+    return out, tiers
 
 
 def apply_override(group: str, tag: str, override: str | None) -> tuple[str, str]:
     if override is None:
         return group, tag
     if override in BUILDING_TAGS:
-        if group == "ui":
-            raise SystemExit(f"refusing to promote ui sprite to building via override ({override})")
         return "building", override
     if override == "exclude":
         if group == "ui":
@@ -208,11 +210,45 @@ def apply_override(group: str, tag: str, override: str | None) -> tuple[str, str
     return "other", override
 
 
+def heuristic_tier(tag: str, bbox_h: int) -> int:
+    """Assign growth tier from zone tag + bbox height (docs/map-building-growth.md)."""
+    if tag == "landmark" or bbox_h >= TALL_TIER3_H:
+        return 3
+    if tag == "residential":
+        if bbox_h < 35:
+            return 0
+        if bbox_h < 55:
+            return 1
+        return 2
+    if tag == "industrial":
+        if bbox_h < 40:
+            return 1
+        return 2
+    if tag == "commercial":
+        # Keep a mid-rise band (tier 2) under the tall cap so big pop does not
+        # jump low→skyscraper after bbox_h>=80 became tier 3 (#47/#48 review).
+        if bbox_h < 40:
+            return 0
+        if bbox_h < 52:
+            return 1
+        return 2
+    return DEFAULT_TIER
+
+
+def resolve_tier(tag: str, bbox_h: int, override: int | None) -> int | None:
+    """Building tags get a tier; non-buildings stay unset (None)."""
+    if tag not in BUILDING_TAGS:
+        return None
+    if override is not None:
+        return override
+    return heuristic_tier(tag, bbox_h)
+
+
 def main() -> None:
     if not NORMALIZED.is_dir():
         raise SystemExit(f"missing normalized sprites dir: {NORMALIZED}")
 
-    overrides = load_overrides(OVERRIDES)
+    tag_overrides, tier_overrides = load_overrides(OVERRIDES)
     entries: list[dict[str, object]] = []
     bases_by_tag: dict[str, list[str]] = {tag: [] for tag in MAP_TAGS}
 
@@ -222,17 +258,19 @@ def main() -> None:
         opaque, bbox_h, bbox_w, colors = sprite_metrics(folder)
         group, tag = classify(folder.name, opaque, bbox_h, bbox_w, colors)
         base = f"sprites/{folder.name}"
-        group, tag = apply_override(group, tag, overrides.get(base))
-        entries.append(
-            {
-                "base": base,
-                "group": group,
-                "tag": tag,
-                "max_opaque_pixels": opaque,
-                "max_bbox_height": bbox_h,
-                "max_bbox_width": bbox_w,
-            }
-        )
+        group, tag = apply_override(group, tag, tag_overrides.get(base))
+        entry: dict[str, object] = {
+            "base": base,
+            "group": group,
+            "tag": tag,
+            "max_opaque_pixels": opaque,
+            "max_bbox_height": bbox_h,
+            "max_bbox_width": bbox_w,
+        }
+        tier = resolve_tier(tag, bbox_h, tier_overrides.get(base))
+        if tier is not None:
+            entry["tier"] = tier
+        entries.append(entry)
         bases_by_tag[tag].append(base)
 
     for tag in MAP_TAGS:
@@ -245,6 +283,10 @@ def main() -> None:
 
     group_counts = Counter(str(e["group"]) for e in entries)
     tag_counts = {tag: len(bases_by_tag[tag]) for tag in MAP_TAGS}
+    tier_counts = Counter(
+        int(e["tier"]) for e in entries if e.get("tag") in BUILDING_TAGS and "tier" in e
+    )
+    by_tier = {str(i): tier_counts.get(i, 0) for i in range(MAX_TIER + 1)}
 
     payload = {
         "version": 2,
@@ -255,12 +297,14 @@ def main() -> None:
             "road": "mcRoad in name",
             "water": "blue-dominant opaque fills (ponds, circles)",
             "tree": "green-dominant sprites with bbox_h>=14",
+            "ground": "iso floor / grass tiles (override-curated; not auto-classified yet)",
             "residential": "building-like fills that are neither industrial nor commercial",
             "industrial": "gray/black-heavy tall or wide warehouse-like masses",
             "commercial": "wide mid-height commercial footprints (bbox_w>=70, bbox_h<=70)",
             "character": "opaque<=180 and bbox_h<=13",
             "exclude": "yellow fills, full-canvas junk, flat leftovers, overrides",
             "override_file": "sprite_tag_overrides.json wins after heuristics",
+            "tier": "0=hut/low … 3=landmark; heuristic from tag+bbox_h (>=80 → 3; commercial 52..79 → 2); optional overrides.tiers",
         },
         "counts": {
             "building": len(building_bases),
@@ -268,6 +312,7 @@ def main() -> None:
             "ui": group_counts.get("ui", 0),
             "other": group_counts.get("other", 0),
             "by_tag": tag_counts,
+            "by_tier": by_tier,
         },
         "building_bases": building_bases,
         "bases_by_tag": bases_by_tag,

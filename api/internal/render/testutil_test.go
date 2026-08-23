@@ -72,10 +72,11 @@ func writeMinimalSpritesV1(t *testing.T, assetsDir string, withBuildings bool) {
     "road": [],
     "tree": [],
     "water": [],
+    "ground": [],
     "park": [],
     "exclude": []
   },
-  "counts": {"building": 1, "by_tag": {"residential": 1, "industrial": 0, "commercial": 0, "landmark": 0, "road": 0, "tree": 0, "water": 0, "park": 0, "exclude": 0}},
+  "counts": {"building": 1, "by_tag": {"residential": 1, "industrial": 0, "commercial": 0, "landmark": 0, "road": 0, "tree": 0, "water": 0, "ground": 0, "park": 0, "exclude": 0}},
   "entries": [{"base": "sprites/House_a", "group": "building", "tag": "residential"}]
 }`
 		if err := os.WriteFile(filepath.Join(sprites, "buildings.json"), []byte(manifest), 0o644); err != nil {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -27,11 +26,6 @@ type dbPool interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
-// slugRe requires 2-40 chars, lowercase alphanumeric and hyphens,
-// with no leading or trailing hyphens.
-// The mandatory [a-z0-9] at both ends ensures minimum 2 chars.
-var slugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$`)
-
 type Handler struct {
 	db       dbPool
 	rdb      *redis.Client
@@ -39,8 +33,9 @@ type Handler struct {
 }
 
 type debugSupportLog struct {
-	Sector    string    `json:"sector"`
-	CreatedAt time.Time `json:"created_at"`
+	Sector     string    `json:"sector"`
+	CreatedAt  time.Time `json:"created_at"`
+	VisitorTag string    `json:"visitor_tag"`
 }
 
 func NewHandler(db dbPool, rdb *redis.Client, saltSeed string) *Handler {
@@ -59,8 +54,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Slug = strings.ToLower(strings.TrimSpace(req.Slug))
-	if !slugRe.MatchString(req.Slug) {
+	slug, err := citycore.ParseSlug(req.Slug)
+	if err != nil {
 		http.Error(w, "slug must be 2-40 lowercase alphanumeric/hyphen", http.StatusBadRequest)
 		return
 	}
@@ -68,18 +63,18 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name must be 2-40 characters", http.StatusBadRequest)
 		return
 	}
-	cc := strings.ToUpper(strings.TrimSpace(req.CountryCode))
-	if len(cc) != 2 {
-		http.Error(w, "country_code must be 2 chars", http.StatusBadRequest)
+	cc, err := citycore.ParseCountryCode(req.CountryCode)
+	if err != nil {
+		http.Error(w, "country_code must be 2 letters A-Z", http.StatusBadRequest)
 		return
 	}
 
 	ctx := r.Context()
 	var city citycore.City
-	err := h.db.QueryRow(ctx,
+	err = h.db.QueryRow(ctx,
 		`INSERT INTO cities (slug, name, country_code) VALUES ($1, $2, $3)
 		 RETURNING slug, name, country_code, owner_id, pop, ind, tra, sec, env, com, created_at`,
-		req.Slug, req.Name, cc,
+		slug.String(), req.Name, cc.String(),
 	).Scan(&city.Slug, &city.Name, &city.CountryCode, &city.OwnerID,
 		&city.Pop, &city.Ind, &city.Tra, &city.Sec, &city.Env, &city.Com, &city.CreatedAt)
 	if err != nil {
@@ -98,7 +93,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/cities/{slug}
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+	slug, ok := pathSlugOrBadRequest(w, r)
+	if !ok {
+		return
+	}
 	city, err := h.getCity(r.Context(), slug)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -114,7 +112,10 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/debug/cities/{slug}
 func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+	slug, ok := pathSlugOrBadRequest(w, r)
+	if !ok {
+		return
+	}
 	ctx := r.Context()
 
 	city, err := h.getCity(ctx, slug)
@@ -127,13 +128,9 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	todayBySector := map[string]int{
-		citycore.SectorPop: 0,
-		citycore.SectorInd: 0,
-		citycore.SectorTra: 0,
-		citycore.SectorSec: 0,
-		citycore.SectorEnv: 0,
-		citycore.SectorCom: 0,
+	todayBySector := make(map[string]int, len(citycore.AllSectors))
+	for _, s := range citycore.AllSectors {
+		todayBySector[s.String()] = 0
 	}
 
 	rows, err := h.db.Query(ctx,
@@ -142,7 +139,7 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 		 WHERE city_slug = $1
 		   AND (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date
 		 GROUP BY sector`,
-		slug)
+		slug.String())
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -164,12 +161,12 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logRows, err := h.db.Query(ctx,
-		`SELECT sector, created_at
+		`SELECT sector, created_at, visitor_hash
 		 FROM visites_log
 		 WHERE city_slug = $1
 		 ORDER BY created_at DESC
 		 LIMIT 20`,
-		slug)
+		slug.String())
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -179,9 +176,15 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 	recent := make([]debugSupportLog, 0, 20)
 	for logRows.Next() {
 		var item debugSupportLog
-		if scanErr := logRows.Scan(&item.Sector, &item.CreatedAt); scanErr != nil {
+		var visitorHash string
+		if scanErr := logRows.Scan(&item.Sector, &item.CreatedAt, &visitorHash); scanErr != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+		if len(visitorHash) >= 8 {
+			item.VisitorTag = visitorHash[:8]
+		} else {
+			item.VisitorTag = visitorHash
 		}
 		recent = append(recent, item)
 	}
@@ -190,18 +193,10 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unlocked := make([]string, 0, len(citycore.ValidSectors))
-	for _, sector := range []string{
-		citycore.SectorPop,
-		citycore.SectorInd,
-		citycore.SectorTra,
-		citycore.SectorSec,
-		citycore.SectorEnv,
-		citycore.SectorCom,
-	} {
-		if citycore.IsUnlocked(city, sector) {
-			unlocked = append(unlocked, sector)
-		}
+	unlockedSectors := citycore.UnlockedSectors(city)
+	unlocked := make([]string, 0, len(unlockedSectors))
+	for _, sector := range unlockedSectors {
+		unlocked = append(unlocked, sector.String())
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -218,16 +213,26 @@ func (h *Handler) DebugGet(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/cities/{slug}/support
 func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+	slug, ok := pathSlugOrBadRequest(w, r)
+	if !ok {
+		return
+	}
 
 	var req struct {
 		Sector string `json:"sector"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
-	if req.Sector == "" {
-		req.Sector = citycore.SectorPop
+	rawSector := req.Sector
+	if rawSector == "" {
+		rawSector = citycore.SectorPop.String()
 	}
-	if !citycore.ValidSectors[req.Sector] {
+	sector, err := citycore.ParseSector(rawSector)
+	if err != nil {
+		http.Error(w, "invalid sector", http.StatusBadRequest)
+		return
+	}
+	col := citycore.SectorColumn(sector)
+	if col == "" {
 		http.Error(w, "invalid sector", http.StatusBadRequest)
 		return
 	}
@@ -243,8 +248,8 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !citycore.IsUnlocked(city, req.Sector) {
-		http.Error(w, fmt.Sprintf("sector %s not yet unlocked", req.Sector), http.StatusForbidden)
+	if !citycore.IsUnlocked(city, sector) {
+		http.Error(w, fmt.Sprintf("sector %s not yet unlocked", sector), http.StatusForbidden)
 		return
 	}
 
@@ -254,8 +259,7 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 	date := now.Format("2006-01-02")
 	key := citycore.VisitKey(date, slug, hash)
 
-	endOfDay := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
-	ttl := endOfDay.Sub(now)
+	ttl := citycore.VisitTTLUntilUTCMidnight(now)
 
 	set, err := h.rdb.SetNX(ctx, key, "1", ttl).Result()
 	if err != nil {
@@ -269,10 +273,9 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	col := citycore.SectorColumn(req.Sector)
 	_, err = h.db.Exec(ctx,
 		fmt.Sprintf(`UPDATE cities SET %s = %s + 1 WHERE slug = $1`, col, col),
-		slug)
+		slug.String())
 	if err != nil {
 		if delErr := h.rdb.Del(ctx, key).Err(); delErr != nil {
 			slog.Warn("failed to roll back Redis visit key", "key", key, "err", delErr)
@@ -283,31 +286,36 @@ func (h *Handler) Support(w http.ResponseWriter, r *http.Request) {
 
 	if _, logErr := h.db.Exec(ctx,
 		`INSERT INTO visites_log (city_slug, sector, visitor_hash) VALUES ($1, $2, $3)`,
-		slug, req.Sector, hash); logErr != nil {
-		slog.Warn("failed to insert visites_log", "city", slug, "err", logErr)
+		slug.String(), sector.String(), hash.String()); logErr != nil {
+		slog.Warn("failed to insert visites_log", "city", slug.String(), "err", logErr)
 	}
 
 	city, _ = h.getCity(ctx, slug)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"city":    city,
-		"message": fmt.Sprintf("+1 %s!", req.Sector),
+		"message": fmt.Sprintf("+1 %s!", sector),
 	})
 }
 
 // GET /api/rankings
 func (h *Handler) Rankings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	cc := r.URL.Query().Get("country")
+	ccRaw := r.URL.Query().Get("country")
 	limit := 20
 
 	var rows pgx.Rows
 	var err error
-	if cc != "" {
+	if ccRaw != "" {
+		cc, parseErr := citycore.ParseCountryCode(ccRaw)
+		if parseErr != nil {
+			http.Error(w, "country must be 2 letters A-Z", http.StatusBadRequest)
+			return
+		}
 		rows, err = h.db.Query(ctx,
 			`SELECT slug, name, country_code, pop, ind, tra, sec, env, com, created_at
 			 FROM cities WHERE country_code = $1 ORDER BY pop DESC LIMIT $2`,
-			strings.ToUpper(cc), limit)
+			cc.String(), limit)
 	} else {
 		rows, err = h.db.Query(ctx,
 			`SELECT slug, name, country_code, pop, ind, tra, sec, env, com, created_at
@@ -358,7 +366,10 @@ var badgeTmpl = template.Must(template.New("badge").Parse(`<svg xmlns="http://ww
 
 // GET /badge/{slug}.svg
 func (h *Handler) Badge(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+	slug, ok := pathSlugOrBadRequest(w, r)
+	if !ok {
+		return
+	}
 	city, err := h.getCity(r.Context(), slug)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -375,7 +386,10 @@ func (h *Handler) Badge(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/cities/{slug}/map.png
 func (h *Handler) MapPNG(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
+	slug, ok := pathSlugOrBadRequest(w, r)
+	if !ok {
+		return
+	}
 	city, err := h.getCity(r.Context(), slug)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -386,13 +400,26 @@ func (h *Handler) MapPNG(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	simulating := false
+	if DebugModeEnabled() {
+		overridden, applied, overrideErr := applyMapDebugOverrides(city, r.URL.Query())
+		if overrideErr != nil {
+			http.Error(w, overrideErr.Error(), http.StatusBadRequest)
+			return
+		}
+		if applied {
+			city = overridden
+			simulating = true
+		}
+	}
+
 	etag, err := render.MapEntityTag(city)
 	if err != nil {
 		http.Error(w, "failed to render map", http.StatusInternalServerError)
 		return
 	}
 	if render.MatchIfNoneMatch(r.Header.Get("If-None-Match"), etag) {
-		setMapPNGCacheHeaders(w, etag)
+		setMapPNGCacheHeaders(w, etag, simulating)
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
@@ -404,22 +431,37 @@ func (h *Handler) MapPNG(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/png")
-	setMapPNGCacheHeaders(w, etag)
+	setMapPNGCacheHeaders(w, etag, simulating)
 	_, _ = w.Write(pngBytes)
 }
 
 const mapPNGCacheControl = "public, max-age=300"
+const mapPNGDebugCacheControl = "no-store"
 
-func setMapPNGCacheHeaders(w http.ResponseWriter, etag string) {
-	w.Header().Set("Cache-Control", mapPNGCacheControl)
+func setMapPNGCacheHeaders(w http.ResponseWriter, etag string, simulating bool) {
+	if simulating {
+		w.Header().Set("Cache-Control", mapPNGDebugCacheControl)
+		w.Header().Set("X-Bitown-Map-Debug", "1")
+	} else {
+		w.Header().Set("Cache-Control", mapPNGCacheControl)
+	}
 	w.Header().Set("ETag", etag)
 }
 
-func (h *Handler) getCity(ctx context.Context, slug string) (*citycore.City, error) {
+func pathSlugOrBadRequest(w http.ResponseWriter, r *http.Request) (citycore.Slug, bool) {
+	slug, err := citycore.ParseSlug(chi.URLParam(r, "slug"))
+	if err != nil {
+		http.Error(w, "slug must be 2-40 lowercase alphanumeric/hyphen", http.StatusBadRequest)
+		return "", false
+	}
+	return slug, true
+}
+
+func (h *Handler) getCity(ctx context.Context, slug citycore.Slug) (*citycore.City, error) {
 	var c citycore.City
 	err := h.db.QueryRow(ctx,
 		`SELECT slug, name, country_code, owner_id, pop, ind, tra, sec, env, com, created_at
-		 FROM cities WHERE slug = $1`, slug,
+		 FROM cities WHERE slug = $1`, slug.String(),
 	).Scan(&c.Slug, &c.Name, &c.CountryCode, &c.OwnerID,
 		&c.Pop, &c.Ind, &c.Tra, &c.Sec, &c.Env, &c.Com, &c.CreatedAt)
 	if err != nil {
