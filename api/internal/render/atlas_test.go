@@ -325,7 +325,41 @@ func TestE2E_UISpritesNeverEnterBuildingPool(t *testing.T) {
 	}
 }
 
-func TestPickRoadKeyUsesNeighborTopology(t *testing.T) {
+func TestFarmClipsExcludedFromBuildingPool(t *testing.T) {
+	requireAtlasFiles(t)
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatalf("load atlas: %v", err)
+	}
+	banned := []string{"sprites/DefineSprite_401", "sprites/DefineSprite_521"}
+	for _, folder := range banned {
+		for _, base := range atlas.BuildingBases {
+			if spriteFolderBase(base) == folder {
+				t.Fatalf("farm clip %s leaked into building pool as %s", folder, base)
+			}
+		}
+		for _, base := range atlas.BasesForTag(TagCommercial) {
+			if spriteFolderBase(base) == folder {
+				t.Fatalf("farm clip %s leaked into commercial pool as %s", folder, base)
+			}
+		}
+		found := false
+		for _, base := range atlas.BasesForTag(TagGround) {
+			if spriteFolderBase(base) == folder {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("farm clip %s should stay tagged ground for farm pickers", folder)
+		}
+	}
+	if atlas.PickFarmKey(0) == "" {
+		t.Fatal("farm picker must still resolve mini champs after catalog exclusion")
+	}
+}
+
+func TestPickRoadKeyUsesAxisAndStyle(t *testing.T) {
 	requireAtlasFiles(t)
 	atlas, err := loadAtlas()
 	if err != nil {
@@ -333,24 +367,20 @@ func TestPickRoadKeyUsesNeighborTopology(t *testing.T) {
 	}
 	cases := []struct {
 		name       string
-		n, e, s, w bool
-		x, y       int
+		dir0, dir1 bool
+		style      int
 		want       string
 	}{
-		{"ew straight", false, true, false, true, 2, 0, roadSpriteBase + "/3_v00.png"},
-		{"ns straight", true, false, true, false, 0, 2, roadSpriteBase + "/6_v00.png"},
-		{"cross even", true, true, true, true, 0, 0, roadSpriteBase + "/3_v00.png"},
-		{"cross odd", true, true, true, true, 1, 0, roadSpriteBase + "/6_v00.png"},
-		{"t east stub", true, true, true, false, 0, 0, roadSpriteBase + "/6_v00.png"},
-		{"corner ne", true, true, false, false, 0, 0, roadSpriteBase + "/1_v00.png"},
-		{"corner es", false, true, true, false, 0, 0, roadSpriteBase + "/2_v00.png"},
-		{"corner sw", false, false, true, true, 0, 0, roadSpriteBase + "/4_v00.png"},
-		{"corner wn", true, false, false, true, 0, 0, roadSpriteBase + "/5_v00.png"},
-		{"dead end e", false, true, false, false, 0, 0, roadSpriteBase + "/3_v00.png"},
+		{"dir0 thin", true, false, roadStyleThin, roadSpriteBase + "/1_v00.png"},
+		{"dir0 dirt", true, false, roadStyleDirt, roadSpriteBase + "/2_v00.png"},
+		{"dir0 pave", true, false, roadStylePave, roadSpriteBase + "/3_v00.png"},
+		{"dir1 thin", false, true, roadStyleThin, roadSpriteBase + "/4_v00.png"},
+		{"dir1 dirt", false, true, roadStyleDirt, roadSpriteBase + "/5_v00.png"},
+		{"dir1 pave", false, true, roadStylePave, roadSpriteBase + "/6_v00.png"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := atlas.PickRoadKey(tc.n, tc.e, tc.s, tc.w, tc.x, tc.y)
+			got := atlas.PickRoadKey(tc.dir0, tc.dir1, tc.style)
 			if got != tc.want {
 				t.Fatalf("PickRoadKey() = %q, want %q", got, tc.want)
 			}
@@ -358,6 +388,14 @@ func TestPickRoadKeyUsesNeighborTopology(t *testing.T) {
 				t.Fatalf("road key %q is not an atlas frame", got)
 			}
 		})
+	}
+	dirt := atlas.PickRoadCrossKey(false)
+	pave := atlas.PickRoadCrossKey(true)
+	if dirt != roadCrossBase+"/1_v00.png" {
+		t.Fatalf("dirt cross = %q", dirt)
+	}
+	if pave != roadCrossBase+"/2_v00.png" {
+		t.Fatalf("pave cross = %q", pave)
 	}
 }
 
@@ -500,5 +538,51 @@ func TestPickBuildingKeyForTagDeterministic(t *testing.T) {
 	}
 	if _, ok := atlas.Frames[a]; !ok {
 		t.Fatalf("picked unknown frame key: %s", a)
+	}
+}
+
+func TestAtlasImageConvertedToRGBA(t *testing.T) {
+	requireAtlasFiles(t)
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatalf("load atlas: %v", err)
+	}
+	if _, ok := atlas.Image.(*image.RGBA); !ok {
+		t.Fatalf("atlas image %T, want *image.RGBA so masked road blits clip", atlas.Image)
+	}
+}
+
+func TestDrawRoadStampCoversSquareEdge(t *testing.T) {
+	src := image.NewRGBA(image.Rect(0, 0, 160, 160))
+	red := color.RGBA{R: 220, A: 255}
+	for y := 0; y < 160; y++ {
+		for x := 0; x < 160; x++ {
+			src.SetRGBA(x, y, red)
+		}
+	}
+	atlas := &Atlas{
+		Image: src,
+		Frames: map[string]frameRect{
+			"road": {X: 0, Y: 0, W: 160, H: 160, AnchorX: 80, AnchorY: 160},
+		},
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, mapWidth, mapHeight))
+	sx, sy := 2, 2
+	footX, footY := squareRoadFoot(sx, sy, -roadGrassLift)
+	if !atlas.drawRoadOnSquare(dst, "road", footX, footY, sx, sy, -roadGrassLift, 0.22) {
+		t.Fatal("drawRoadOnSquare returned false")
+	}
+	// Near the SE foot (stamp anchor) and a bit north into the square.
+	sx0, sy0 := sx*squareSide+squareSide-1, sy*squareSide+squareSide-1
+	ox, oy := atlasRoadCenter(sx0, sy0)
+	mx, my := atlasRoadCenter(sx0-2, sy0-2)
+	if dst.RGBAAt(ox, oy) != red && dst.RGBAAt(mx, my) != red {
+		t.Fatalf("SE-foot stamp should cover square grass, se=%+v mid=%+v", dst.RGBAAt(ox, oy), dst.RGBAAt(mx, my))
+	}
+	// Must not hang a full plate north of the expanded clip (0.22).
+	pad := float64(squareSide*isoTileH) * 0.22
+	aboveY := oy - squareSide*isoTileH - int(pad) - 8
+	if aboveY >= 0 && dst.RGBAAt(ox, aboveY) == red {
+		t.Fatalf("road stamp leaked north of its square: y=%d", aboveY)
 	}
 }

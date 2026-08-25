@@ -33,11 +33,12 @@ func (a *Atlas) drawFrameOnPeonGrass(dst *image.RGBA, key string, footX, footY i
 	})
 }
 
-// drawRoadAtFoot paints a road frame but only onto the iso platform mask so
-// dashed stubs cannot hang past the dalle island edge.
-func (a *Atlas) drawRoadAtFoot(dst *image.RGBA, key string, footX, footY int, platform roadMaskData) bool {
+// drawRoadOnSquare paints one edge stamp clipped to that square's iso dalle
+// (catalog expandedDalleTopWorld) so unclipped 702 art cannot hang past the
+// north tip of the island.
+func (a *Atlas) drawRoadOnSquare(dst *image.RGBA, key string, footX, footY, sx, sy, dy int, expand float64) bool {
 	return a.drawFrameMasked(dst, key, footX, footY, func(px, py int) bool {
-		return roadMaskedAt(platform.mask, px, py)
+		return pointInIsoBlockOffset(px, py, sx*squareSide, sy*squareSide, squareSide, dy, expand)
 	})
 }
 
@@ -48,12 +49,9 @@ func (a *Atlas) drawFrameMasked(dst *image.RGBA, key string, footX, footY int, m
 	}
 	dstX := footX - rect.AnchorX
 	dstY := footY - rect.AnchorY
-	src, ok := a.Image.(interface {
+	src, hasRGBA := a.Image.(interface {
 		RGBAAt(x, y int) color.RGBA
 	})
-	if !ok {
-		return a.drawFrameAtFoot(dst, key, footX, footY)
-	}
 	bounds := dst.Bounds()
 	for sy := 0; sy < rect.H; sy++ {
 		py := dstY + sy
@@ -68,7 +66,16 @@ func (a *Atlas) drawFrameMasked(dst *image.RGBA, key string, footX, footY int, m
 			if !mask(px, py) {
 				continue
 			}
-			c := src.RGBAAt(rect.X+sx, rect.Y+sy)
+			var c color.RGBA
+			if hasRGBA {
+				c = src.RGBAAt(rect.X+sx, rect.Y+sy)
+			} else {
+				converted, ok := color.RGBAModel.Convert(a.Image.At(rect.X+sx, rect.Y+sy)).(color.RGBA)
+				if !ok {
+					continue
+				}
+				c = converted
+			}
 			if c.A == 0 {
 				continue
 			}

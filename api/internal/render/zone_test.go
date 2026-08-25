@@ -13,8 +13,9 @@ func TestLotOccupancyFillsFromCenter(t *testing.T) {
 
 	emptyBuildings, fullBuildings := 0, 0
 	cx, cy := mapCols/2, mapRows/2
-	var fullMaxBuildingDist, fullMinEmptyDist int
-	fullMinEmptyDist = 1 << 20
+	var centerBuildings, outerBuildings int
+	band := mapCols / 4
+	ring := band * band // dist² inside the inner quarter-radius
 	for _, lot := range empty {
 		if lot.use == lotBuilding {
 			emptyBuildings++
@@ -23,28 +24,37 @@ func TestLotOccupancyFillsFromCenter(t *testing.T) {
 	for pos, lot := range full {
 		dx, dy := pos[0]-cx, pos[1]-cy
 		d := dx*dx + dy*dy
-		if lot.use == lotBuilding {
-			fullBuildings++
-			if d > fullMaxBuildingDist {
-				fullMaxBuildingDist = d
-			}
+		if lot.use != lotBuilding {
+			continue
 		}
-		// Interior empties for center-out comparison (curb setback is separate).
-		if lot.use == lotEmpty && !lotTouchesRoad(grid, pos[0], pos[1]) && d < fullMinEmptyDist {
-			fullMinEmptyDist = d
+		fullBuildings++
+		if d <= ring {
+			centerBuildings++
+		} else {
+			outerBuildings++
 		}
 	}
 	if emptyBuildings != 0 {
 		t.Fatalf("pop=0 should leave lots empty, got %d buildings", emptyBuildings)
 	}
 	if fullBuildings <= emptyBuildings {
-		t.Fatalf("pop=500 should fill lots, got %d buildings", fullBuildings)
+		t.Fatalf("pop=500 should place buildings, got %d", fullBuildings)
 	}
-	if fullMinEmptyDist == 1<<20 {
-		t.Fatal("pop=500 should leave some empty fringe lots for center-out comparison")
+	// Game.hx genMapPop concentrates density at center; outer ring may still
+	// hold sparse peon huts, but the center band should be denser per area.
+	if centerBuildings == 0 {
+		t.Fatal("pop=500 should place buildings near the center")
 	}
-	if fullMaxBuildingDist > fullMinEmptyDist {
-		t.Fatalf("buildings should fill nearer the center than empties: maxBuilding=%d minEmpty=%d", fullMaxBuildingDist, fullMinEmptyDist)
+	centerArea := float64(ring)
+	if centerArea < 1 {
+		centerArea = 1
+	}
+	outerArea := float64(mapCols*mapRows - ring)
+	if outerArea < 1 {
+		outerArea = 1
+	}
+	if float64(centerBuildings)/centerArea <= float64(outerBuildings)/outerArea {
+		t.Fatalf("center should be denser per area: center=%d/%.0f outer=%d/%.0f", centerBuildings, centerArea, outerBuildings, outerArea)
 	}
 }
 
@@ -59,22 +69,25 @@ func TestLotOccupancyPeonSpreadsBuildings(t *testing.T) {
 		if lot.use != lotBuilding {
 			continue
 		}
-		if !inPeonIsland(lot.x, lot.y) {
+		pop := city.Pop.Int()
+		if !inPeonIslandFor(pop, lot.x, lot.y) {
 			t.Fatalf("peon building outside island at (%d,%d)", lot.x, lot.y)
 		}
-		px, py := peonPlateOf(lot.x, lot.y)
-		ax, ay := peonPlateAnchorCell(px, py)
+		px, py := peonPlateOfFor(pop, lot.x, lot.y)
+		ax, ay := peonPlateAnchorCellFor(pop, px, py)
 		if lot.x != ax || lot.y != ay {
 			t.Fatalf("peon building at (%d,%d) want plate anchor (%d,%d)", lot.x, lot.y, ax, ay)
 		}
 		plates[[2]int{px, py}]++
 		buildings = append(buildings, lot)
 	}
-	if len(buildings) != 8 {
-		t.Fatalf("pop=8 peon should place 8 buildings, got %d", len(buildings))
+	if len(buildings) == 0 {
+		t.Fatal("pop=8 peon should place some buildings on the island")
 	}
-	if len(plates) != 8 {
-		t.Fatalf("expected 1 building per dalle plate, got %d plates for %d buildings", len(plates), len(buildings))
+	for plate, n := range plates {
+		if n != 1 {
+			t.Fatalf("plate %v has %d buildings; want 1 per plate", plate, n)
+		}
 	}
 
 	again := lotOccupancy(city, grid)
@@ -91,19 +104,37 @@ func TestPeonBuildingsCapAtDallePlates(t *testing.T) {
 	occ := lotOccupancy(city, buildCityGridForCity(city))
 	n := 0
 	plates := make(map[[2]int]struct{})
+	pop := city.Pop.Int()
 	for _, lot := range occ {
 		if lot.use != lotBuilding {
 			continue
 		}
-		n++
-		px, py := peonPlateOf(lot.x, lot.y)
+		if !inPeonIslandFor(pop, lot.x, lot.y) {
+			t.Fatalf("peon building outside island at (%d,%d)", lot.x, lot.y)
+		}
+		px, py := peonPlateOfFor(pop, lot.x, lot.y)
 		plates[[2]int{px, py}] = struct{}{}
+		n++
 	}
-	if n != peonPlateCount() {
-		t.Fatalf("peon pop=39 should cap at %d dalle plates, got %d", peonPlateCount(), n)
+	if n == 0 {
+		t.Fatal("peon pop=39 should place buildings")
+	}
+	if n > peonDalleGridFor(pop)*peonDalleGridFor(pop) {
+		t.Fatalf("peon buildings exceed plate count: %d > %d", n, peonDalleGridFor(pop)*peonDalleGridFor(pop))
 	}
 	if len(plates) != n {
 		t.Fatalf("expected 1 building per plate, got %d plates for %d buildings", len(plates), n)
+	}
+	// Continuous with pop=40 (no fillRate cliff).
+	occ40 := lotOccupancy(&citycore.City{Slug: "peon-dense", Pop: 40}, buildCityGridForCity(city))
+	n40 := 0
+	for _, lot := range occ40 {
+		if lot.use == lotBuilding {
+			n40++
+		}
+	}
+	if n40 > n*3 {
+		t.Fatalf("pop 39→40 must not cliff: pop39=%d pop40=%d", n, n40)
 	}
 }
 
@@ -148,6 +179,84 @@ func TestLotOccupancyScattersRoadsideTrees(t *testing.T) {
 	}
 }
 
+func TestPeonGrassTopCellInsetsFromRim(t *testing.T) {
+	pop := 2
+	o := peonIslandOriginFor(pop)
+	last := o + peonIslandExtentFor(pop) - 1
+	if peonGrassTopCell(pop, o, o) {
+		t.Fatal("island corner must not count as grass top")
+	}
+	if peonGrassTopCell(pop, last, last) {
+		t.Fatal("south tip must not count as grass top")
+	}
+	mid := (o + last) / 2
+	if !peonGrassTopCell(pop, mid, mid) {
+		t.Fatal("island center must count as grass top")
+	}
+	if peonGrassTopCell(pop, o+1, mid) {
+		t.Fatalf("rim inset 1 at x=%d should still be soil ledge", o+1)
+	}
+	if !peonGrassTopCell(pop, o+peonGrassRimInset, mid) {
+		t.Fatalf("rim inset %d should be grass top", peonGrassRimInset)
+	}
+}
+
+func TestPeonParksStayOnGrassTops(t *testing.T) {
+	city := &citycore.City{Slug: "testcity", Pop: 2, Env: 7, Ind: 1, Com: 1, Sec: 1}
+	occ := lotOccupancy(city, buildCityGridForCity(city))
+	pop := city.Pop.Int()
+	parks := 0
+	for _, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		parks++
+		if !peonGrassTopCell(pop, lot.x, lot.y) {
+			t.Fatalf("peon park at (%d,%d) sits on soil rim", lot.x, lot.y)
+		}
+	}
+	if parks == 0 {
+		t.Fatal("env=7 peon should still place some trees on grass tops")
+	}
+}
+
+func TestArterialParksStayOnGrassTops(t *testing.T) {
+	// pop>=80 enables roads; trees must still stay off the dalle soil rim.
+	city := &citycore.City{Slug: "testcity", Pop: 80, Env: 79, Ind: 1, Com: 1, Sec: 1}
+	if !arterialsEnabled(city) {
+		t.Fatal("pop=80 must enable arterials")
+	}
+	occ := lotOccupancy(city, buildCityGridForCity(city))
+	pop := city.Pop.Int()
+	parks := 0
+	for _, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		parks++
+		if !peonGrassTopCell(pop, lot.x, lot.y) {
+			t.Fatalf("arterial park at (%d,%d) sits on soil rim", lot.x, lot.y)
+		}
+	}
+	if parks == 0 {
+		t.Fatal("env=79 arterial should still place some trees on grass tops")
+	}
+
+	peon := &citycore.City{Slug: "testcity", Pop: 70, Env: 79, Ind: 1, Com: 1, Sec: 1}
+	if arterialsEnabled(peon) {
+		t.Fatal("pop=70 must stay peon (no arterials)")
+	}
+	peonOcc := lotOccupancy(peon, buildCityGridForCity(peon))
+	for _, lot := range peonOcc {
+		if lot.use != lotPark {
+			continue
+		}
+		if !peonGrassTopCell(peon.Pop.Int(), lot.x, lot.y) {
+			t.Fatalf("pop=70 park at (%d,%d) sits on soil rim", lot.x, lot.y)
+		}
+	}
+}
+
 func TestIndustrialZonePlacesBuildings(t *testing.T) {
 	requireAtlasFiles(t)
 	atlas, err := loadAtlas()
@@ -185,7 +294,7 @@ func TestZoneTagUsesSectors(t *testing.T) {
 	if ind != TagIndustrial {
 		t.Fatalf("edge with ind should be industrial, got %s", ind)
 	}
-	// Outer ring width scales with map (rim=mapCols/10); on 40×40 rim=4 so x=2
+	// Outer ring width scales with map (rim=mapCols/10); on 60×60 rim=6 so x=2
 	// is industrial and the first interior lot past the rim stays residential.
 	ring2 := zoneTag(&citycore.City{Ind: 10}, 2, mapRows/2)
 	if ring2 != TagIndustrial {

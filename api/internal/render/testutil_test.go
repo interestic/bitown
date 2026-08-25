@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/interestic/bitown/internal/citycore"
 )
 
 func requireAtlasFiles(t *testing.T) {
@@ -26,6 +28,11 @@ func forceFallbackAtlas(t *testing.T) {
 	t.Setenv("BITOWN_ASSETS_DIR", t.TempDir())
 	t.Setenv("BITOWN_ATLAS_REQUIRED", "")
 	t.Setenv("ENV", "development")
+}
+
+func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
+	dens := genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String()))
+	return lotOccupancyWithDensity(city, grid, dens)
 }
 
 func writeMinimalSpritesV1(t *testing.T, assetsDir string, withBuildings bool) {

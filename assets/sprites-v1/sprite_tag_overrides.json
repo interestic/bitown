@@ -57,8 +57,9 @@
     "sprites/DefineSprite_14": "exclude",
     "sprites/DefineSprite_172": "ground",
     "sprites/DefineSprite_732": "ground",
-    "sprites/DefineSprite_382": "tree",
-    "sprites/DefineSprite_307": "tree",
+    "sprites/DefineSprite_382": "residential",
+    "sprites/DefineSprite_307": "commercial",
+    "sprites/DefineSprite_401": "ground",
     "sprites/DefineSprite_111": "tree",
     "sprites/DefineSprite_213": "exclude",
     "sprites/DefineSprite_276": "exclude",
@@ -79,7 +80,6 @@
     "sprites/DefineSprite_388": "ground",
     "sprites/DefineSprite_396": "ground",
     "sprites/DefineSprite_399": "ground",
-    "sprites/DefineSprite_401": "ground",
     "sprites/DefineSprite_627": "ground",
     "sprites/DefineSprite_80": "ground",
     "sprites/DefineSprite_200": "residential",
@@ -123,6 +123,7 @@
     "low_pop_tier0": "Only a handful of residential/commercial bases land in tier 0 from bbox heuristics. Candidates to promote later from exclude/ground if peon maps look too empty of hut-scale art: review exclude tall-thin rejects; do not auto-promote UI.",
     "tall_tier3": "bbox_h>=80 is tier 3 (突出した高さ). DefineSprite_633 is the 93px residential tower; keep it at 3 so pop=120 outer lots (maxTier 2) do not flood with skyscrapers.",
     "more_houses_49": "House-cluster DefineSprite_123 (multi-house on one lot) + tiny 249 retagged residential. Mid-rise offices stay commercial. Folder-weighted pick + 50px lot width restore classic houses.",
-    "midrise_band": "Commercial heuristic keeps tier 2 for bbox_h 52..79 so big pop still has mid-rise after tall→3. Pick is tier-first then folder-uniform so tall folder count cannot drown mid-rise."
+    "midrise_band": "Commercial heuristic keeps tier 2 for bbox_h 52..79 so big pop still has mid-rise after tall→3. Pick is tier-first then folder-uniform so tall folder count cannot drown mid-rise.",
+    "champs_farm_89": "DefineSprite_401 / 521 are Townzzy champs floor clips (auth_big_champs_gfx / auth_champs_gfx). Tag ground so farm pickers (#86) still use them while the commercial building pool does not."
   }
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/draw"
 	_ "image/png"
 	"io"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/interestic/bitown/internal/citycore"
 )
 
 type frameRect struct {
@@ -36,10 +39,19 @@ type buildingsManifest struct {
 }
 
 type catalogEntry struct {
-	Base  string `json:"base"`
-	Group string `json:"group"`
-	Tag   string `json:"tag"`
-	Tier  *int   `json:"tier,omitempty"`
+	Base       string        `json:"base"`
+	Group      string        `json:"group"`
+	Tag        string        `json:"tag"`
+	Tier       *int          `json:"tier,omitempty"`
+	Unlock     *FolderUnlock `json:"unlock,omitempty"`
+	LibraryRef *LibraryRef   `json:"library_ref,omitempty"`
+}
+
+// LibraryRef is the mcHouse1/2/3 ShowFrame mapping from the SWF graph (#82).
+type LibraryRef struct {
+	LibraryID   int    `json:"library_id"`
+	LibraryName string `json:"library_name"`
+	Frame       int    `json:"frame"`
 }
 
 const (
@@ -51,7 +63,7 @@ const (
 	TagRoad     = "road"
 	TagTree     = "tree"
 	TagWater    = "water"
-	// TagGround is stamped as 4×4 mcDalle plates (peon / Caerphilly field).
+	// TagGround is stamped one mcDalle per square (peon / Townzzy 6×6 field).
 	TagGround = "ground"
 	// TagPark is catalogued but intentionally unused in M1 (count may be 0).
 	// Park lots are drawn with TagTree sprites instead.
@@ -80,10 +92,14 @@ type Atlas struct {
 	BasesByTag    map[string][]string
 	// TierByFolder maps sprite folder base (e.g. sprites/Foo) to growth tier 0..3.
 	// Missing keys fall back to DefaultBuildingTier (1) in pool selection.
-	TierByFolder  map[string]int
-	VariantSuffix func(seed uint32) string
-	sourceDir     string
-	revision      string
+	TierByFolder map[string]int
+	// UnlockByFolder maps sprite folder base to sector minima for placement (#79).
+	UnlockByFolder map[string]FolderUnlock
+	// LibraryByFolder maps pool folders to mcHouse library_ref (updateLib).
+	LibraryByFolder map[string]LibraryRef
+	VariantSuffix   func(seed uint32) string
+	sourceDir       string
+	revision        string
 }
 
 var (
@@ -156,6 +172,7 @@ func loadAtlasFromRoot(base string, root *os.Root, revision string) (*Atlas, err
 	if err != nil {
 		return nil, fmt.Errorf("decode atlas png: %w", err)
 	}
+	img = atlasImageRGBA(img)
 
 	for key, rect := range meta.Frames {
 		if rect.W <= 0 || rect.H <= 0 {
@@ -186,17 +203,31 @@ func loadAtlasFromRoot(base string, root *os.Root, revision string) (*Atlas, err
 	catalog = filterOversizedSingleLotBuildings(catalog, meta.Frames)
 
 	return &Atlas{
-		Image:         img,
-		Frames:        meta.Frames,
-		BuildingBases: catalog.buildingBases,
-		BasesByTag:    catalog.basesByTag,
-		TierByFolder:  catalog.tierByFolder,
-		sourceDir:     base,
-		revision:      revision,
+		Image:           img,
+		Frames:          meta.Frames,
+		BuildingBases:   catalog.buildingBases,
+		BasesByTag:      catalog.basesByTag,
+		TierByFolder:    catalog.tierByFolder,
+		UnlockByFolder:  catalog.unlockByFolder,
+		LibraryByFolder: catalog.libraryByFolder,
+		sourceDir:       base,
+		revision:        revision,
 		VariantSuffix: func(seed uint32) string {
 			return fmt.Sprintf("_v%02d.png", seed%4)
 		},
 	}, nil
+}
+
+// atlasImageRGBA makes masked blits (roads, peon grass) use RGBAAt. PNG decode
+// often yields NRGBA, and drawFrameMasked used to fall back to an unclipped blit.
+func atlasImageRGBA(img image.Image) *image.RGBA {
+	if rgba, ok := img.(*image.RGBA); ok {
+		return rgba
+	}
+	b := img.Bounds()
+	dst := image.NewRGBA(b)
+	draw.Draw(dst, b, img, b.Min, draw.Src)
+	return dst
 }
 
 func resolveSpritesV1Dir() (string, error) {
@@ -258,16 +289,35 @@ func (a *Atlas) BasesForTag(tag string) []string {
 	return a.BasesByTag[tag]
 }
 
-const roadSpriteBase = "sprites/DefineSprite_702_mcRoad"
+const (
+	roadSpriteBase = "sprites/DefineSprite_702_mcRoad"
+	roadCrossBase  = "sprites/DefineSprite_705"
+)
 
-// PickRoadKey chooses an mcRoad autotile frame from grid neighbor connectivity.
-// Frame roles (DefineSprite_702_mcRoad): 3=EW, 6=NS, 1/2/4/5=corner stubs.
-// Crossings and T-junctions keep an EW/NS spine tile; v00 is used for stability.
-func (a *Atlas) PickRoadKey(n, e, s, w bool, x, y int) string {
+// PickRoadKey chooses an mcRoad frame from Game.hx axis × style
+// (dir0 → 1–3, dir1 → 4–6). v00 is used for stability.
+func (a *Atlas) PickRoadKey(dir0, dir1 bool, style int) string {
 	if a == nil {
 		return ""
 	}
-	idx := roadFrameIndex(n, e, s, w, x, y)
+	if style < roadStyleThin {
+		style = roadStyleThin
+	}
+	if style > roadStylePave {
+		style = roadStylePave
+	}
+	dir := 0
+	switch {
+	case dir0 && !dir1:
+		dir = 0
+	case dir1 && !dir0:
+		dir = 1
+	case dir0 && dir1:
+		dir = 0
+	default:
+		dir = 0
+	}
+	idx := dir*3 + style + 1
 	key := fmt.Sprintf("%s/%d_v00.png", roadSpriteBase, idx)
 	if _, ok := a.Frames[key]; ok {
 		return key
@@ -279,47 +329,39 @@ func (a *Atlas) PickRoadKey(n, e, s, w bool, x, y int) string {
 	return ""
 }
 
-func roadFrameIndex(n, e, s, w bool, x, y int) int {
-	ew := e && w
-	ns := n && s
-	switch {
-	case ew && ns:
-		// Full cross: alternate spine orientation for visual variety.
-		if (x+y)%2 == 0 {
-			return 3
-		}
-		return 6
-	case ew && (n || s):
-		// T with east-west bar.
-		return 3
-	case ns && (e || w):
-		// T with north-south bar.
-		return 6
-	case ew:
-		return 3
-	case ns:
-		return 6
-	case n && e:
-		return 1
-	case e && s:
-		return 2
-	case s && w:
-		return 4
-	case w && n:
-		return 5
-	case e || w:
-		return 3
-	case n || s:
-		return 6
-	default:
-		return 3
+func (a *Atlas) PickRoadCrossKey(paved bool) string {
+	if a == nil {
+		return ""
 	}
+	frame := "1_v00.png"
+	if paved {
+		frame = "2_v00.png"
+	}
+	key := roadCrossBase + "/" + frame
+	if _, ok := a.Frames[key]; ok {
+		return key
+	}
+	fallback := roadCrossBase + "/1_v00.png"
+	if _, ok := a.Frames[fallback]; ok {
+		return fallback
+	}
+	return ""
 }
 
 // PickKeyForTag chooses a deterministic frame for the tag.
 // Empty catalogs return "" (callers must fall back explicitly).
 func (a *Atlas) PickKeyForTag(tag string, seed uint32) string {
-	bases := a.BasesForTag(tag)
+	return a.pickKeyFromBases(a.BasesForTag(tag), tag, seed)
+}
+
+// PickKeyForTagUnlocked picks a frame from catalog entries whose unlock
+// requirements are satisfied by the city (#79).
+func (a *Atlas) PickKeyForTagUnlocked(city *citycore.City, tag string, seed uint32) string {
+	bases := filterBasesByUnlock(a, a.BasesForTag(tag), city)
+	return a.pickKeyFromBases(bases, tag, seed)
+}
+
+func (a *Atlas) pickKeyFromBases(bases []string, tag string, seed uint32) string {
 	if len(bases) == 0 {
 		return ""
 	}

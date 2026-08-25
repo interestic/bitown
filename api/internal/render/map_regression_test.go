@@ -34,6 +34,20 @@ func decodeMapPNG(t *testing.T, data []byte) image.Image {
 	return img
 }
 
+func isFoliageColor(c color.RGBA) bool {
+	if c.A != 255 {
+		return false
+	}
+	if isTerrainColor(c) {
+		return false
+	}
+	// mcDalle tops can be yellower than grassColor (low blue) and are not trees.
+	if c.G >= 150 && c.G <= 230 && c.R >= 100 && c.R <= 200 && c.B <= 50 {
+		return false
+	}
+	return int(c.G) > int(c.R)+25 && int(c.G) > int(c.B)+25
+}
+
 func isTerrainColor(c color.RGBA) bool {
 	if c == roadColor {
 		return true
@@ -203,3 +217,46 @@ func TestMapEntityTag_FallbackWhenAtlasMissing(t *testing.T) {
 	}
 }
 
+func TestBuildCityMapPNG_TreesStayOffDalleSoil(t *testing.T) {
+	requireAtlasFiles(t)
+
+	cases := []struct {
+		pop int
+		env int
+	}{
+		{pop: 2, env: 7},
+		{pop: 70, env: 79},
+		{pop: 80, env: 79},
+		{pop: 120, env: 79},
+	}
+	for _, tc := range cases {
+		city := &citycore.City{Slug: "testcity", Pop: citycore.SectorValue(tc.pop), Env: citycore.SectorValue(tc.env), Ind: 1, Com: 1, Sec: 1}
+		data, err := BuildCityMapPNG(city)
+		if err != nil {
+			t.Fatalf("pop=%d render: %v", tc.pop, err)
+		}
+		img, ok := decodeMapPNG(t, data).(*image.RGBA)
+		if !ok {
+			t.Fatal("expected RGBA map")
+		}
+		grass := buildPeonGrass(tc.pop)
+		b := img.Bounds()
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			for x := b.Min.X; x < b.Max.X; x++ {
+				if x < 0 || x >= mapWidth || !grass.col[x] {
+					continue
+				}
+				// Geometric diamonds sit ~1–2px inside mcDalle raster; skip that
+				// fringe so yellow-olive edge texels are not treated as trees.
+				if y <= grass.maxY[x]+2 {
+					continue
+				}
+				c := img.RGBAAt(x, y)
+				if !isFoliageColor(c) {
+					continue
+				}
+				t.Fatalf("pop=%d foliage on dalle soil at (%d,%d) %+v", tc.pop, x, y, c)
+			}
+		}
+	}
+}

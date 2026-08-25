@@ -17,8 +17,9 @@ import (
 const (
 	// Miniville Cs.hx: SIDE squares of SQUARE_SIDE mini-cells. Full SIDE=30 is
 	// ~300×300 (~7k×4k PNG). bitown crops to displaySide squares so map.png
-	// stays API-sized; peon maps paint only a centered 4×4 dalle island.
-	displaySide = 4  // cropped Cs.SIDE (4×10 = 40 mini-cells per axis)
+	// stays API-sized; peon field grows with Game.hx displaySide up to that crop.
+	// Crop 6 matches Game.hx / Townzzy at pop=1 (Std.int margin → displaySide=6).
+	displaySide = 6
 	squareSide  = 10 // Cs.SQUARE_SIDE
 
 	mapCols = displaySide * squareSide
@@ -26,19 +27,19 @@ const (
 
 	isoTileW = 24 // Cs.WW
 	isoTileH = 12 // Cs.HH
-	isoPad   = 96
+	// Pad for native-height towers (mcHouse3 raw ~484px) and wide overhangs.
+	isoPad = 528
 
-	// groundBlock matches one mcDalle stamp (genMiniSquare).
-	groundBlock = 4
-	// peonDalleGrid is the Townzzy Caerphilly-style raised field (4×4 plates).
-	peonDalleGrid = 4
+	// One mcDalle per square (Game.hx addBat size=5 at square origin).
+	// genMiniSquare's 4-cell grid is building placement, not ground stamps.
+	groundBlock = squareSide
 )
 
 var (
 	isoOriginX = (mapRows-1)*(isoTileW/2) + isoPad
 	isoOriginY = isoPad
 	mapWidth   = isoOriginX + (mapCols-1)*(isoTileW/2) + isoPad + isoTileW/2
-	mapHeight  = isoOriginY + (mapCols+mapRows-2)*(isoTileH/2) + isoTileH + isoPad + 96
+	mapHeight  = isoOriginY + (mapCols+mapRows-2)*(isoTileH/2) + isoTileH + isoPad
 )
 
 var (
