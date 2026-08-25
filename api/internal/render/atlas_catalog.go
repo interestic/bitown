@@ -10,9 +10,11 @@ import (
 )
 
 type loadedCatalog struct {
-	buildingBases []string
-	basesByTag    map[string][]string
-	tierByFolder  map[string]int
+	buildingBases   []string
+	basesByTag      map[string][]string
+	tierByFolder    map[string]int
+	unlockByFolder  map[string]FolderUnlock
+	libraryByFolder map[string]LibraryRef
 }
 
 func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, error) {
@@ -40,6 +42,8 @@ func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, er
 
 	tagByFolder := make(map[string]string, len(manifest.Entries))
 	tierByFolder := make(map[string]int, len(manifest.Entries))
+	unlockByFolder := make(map[string]FolderUnlock, len(manifest.Entries))
+	libraryByFolder := make(map[string]LibraryRef, len(manifest.Entries))
 	for _, entry := range manifest.Entries {
 		if entry.Base == "" || entry.Tag == "" {
 			continue
@@ -54,6 +58,12 @@ func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, er
 				tier = 3
 			}
 			tierByFolder[entry.Base] = tier
+		}
+		if entry.Unlock != nil {
+			unlockByFolder[entry.Base] = *entry.Unlock
+		}
+		if entry.LibraryRef != nil && entry.LibraryRef.LibraryID > 0 {
+			libraryByFolder[entry.Base] = *entry.LibraryRef
 		}
 	}
 
@@ -107,15 +117,28 @@ func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, er
 				continue
 			}
 		}
+		if _, building := mapBuildingTags[tag]; building {
+			if _, ok := allowed[folder]; !ok {
+				continue
+			}
+		}
 		byTag[tag] = append(byTag[tag], frameBase)
 	}
 
-	return loadedCatalog{buildingBases: filtered, basesByTag: byTag, tierByFolder: tierByFolder}, nil
+	return loadedCatalog{
+		buildingBases:   filtered,
+		basesByTag:      byTag,
+		tierByFolder:    tierByFolder,
+		unlockByFolder:  unlockByFolder,
+		libraryByFolder: libraryByFolder,
+	}, nil
 }
 
-// maxSingleLotBuildingW caps atlas frame width for 1-lot placement. Wider Flash
-// clips are multi-tile fragments that look sliced when placed alone.
-const maxSingleLotBuildingW = isoTileW + 26 // 50px at Cs.WW=24
+// maxSingleLotBuildingW caps atlas frame width for 1-lot placement.
+// Native FFDec sizes (post-normalize, no 96px downscale) let library primaries
+// overhang several cells — mcHouse3 is ~238px wide. Keep a soft ceiling so
+// accidental full-stage / UI sheets stay out of the pool.
+const maxSingleLotBuildingW = 280
 
 func filterOversizedSingleLotBuildings(catalog loadedCatalog, frames map[string]frameRect) loadedCatalog {
 	buildingBases := filterNarrowFrameBases(catalog.buildingBases, frames)
@@ -128,9 +151,11 @@ func filterOversizedSingleLotBuildings(catalog loadedCatalog, frames map[string]
 		byTag[tag] = append([]string(nil), bases...)
 	}
 	return loadedCatalog{
-		buildingBases: buildingBases,
-		basesByTag:    byTag,
-		tierByFolder:  catalog.tierByFolder,
+		buildingBases:   buildingBases,
+		basesByTag:      byTag,
+		tierByFolder:    catalog.tierByFolder,
+		unlockByFolder:  catalog.unlockByFolder,
+		libraryByFolder: catalog.libraryByFolder,
 	}
 }
 

@@ -28,7 +28,8 @@ func TestIsoCanvasIsDiamondGrid(t *testing.T) {
 }
 
 func TestIsoCanvasFitsCornersAndTallOverhang(t *testing.T) {
-	const tallH, wideW = 96, 73
+	// Native mcHouse3-scale overhang after normalize (no 96px downscale).
+	const tallH, wideW = 520, 260
 	corners := [][2]int{{0, 0}, {mapCols - 1, 0}, {0, mapRows - 1}, {mapCols - 1, mapRows - 1}}
 	for _, c := range corners {
 		topX, topY := isoCell(c[0], c[1])

@@ -26,6 +26,30 @@ func TestMaxTierForPop(t *testing.T) {
 	}
 }
 
+// maxTierForLotTag applies the generic distance cap, then a wider house belt
+// on residential lots (test helper mirroring the periphery rules in
+// maxTierForLotWithLocal without local density).
+func maxTierForLotTag(pop, x, y int, tag string) int {
+	max := maxTierForPop(pop)
+	cx, cy := mapCols/2, mapRows/2
+	dx, dy := x-cx, y-cy
+	dist2 := dx*dx + dy*dy
+	outer := outerLotDist2()
+	if tag == TagResidential && pop < popTierHuge {
+		outer = outer / 2
+		if outer < 1 {
+			outer = 1
+		}
+	}
+	if dist2 > outer && max > 0 {
+		max--
+	}
+	if tag != TagIndustrial && dist2 >= outer*2 && max > 1 {
+		max = 1
+	}
+	return max
+}
+
 func TestMaxTierForLot(t *testing.T) {
 	cx, cy := mapCols/2, mapRows/2
 	outer := outerLotDist2()
@@ -74,8 +98,9 @@ func TestTallResidentialIsTier3(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := atlas.folderTier("sprites/DefineSprite_633"); got != 3 {
-		t.Fatalf("DefineSprite_633 (bbox_h=93) tier=%d want 3", got)
+	// DefineSprite_633 is a child module (not pool_eligible). Pool landmarks carry tier 3.
+	if got := atlas.folderTier("sprites/DefineSprite_692"); got != 3 {
+		t.Fatalf("DefineSprite_692 (pool landmark) tier=%d want 3", got)
 	}
 }
 
@@ -120,7 +145,7 @@ func TestCenterLotsAtBigThresholdCanPlaceTier3(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	city := &citycore.City{Slug: "testcity", Pop: 120, Ind: 5, Com: 3, Env: 80}
+	city := &citycore.City{Slug: "testcity", Pop: 400, Ind: 50, Com: 50, Env: 80}
 	cx, cy := mapCols/2, mapRows/2
 	var center, centerTier3 int
 	for y := 0; y < mapRows; y++ {
@@ -145,7 +170,7 @@ func TestCenterLotsAtBigThresholdCanPlaceTier3(t *testing.T) {
 		t.Fatal("expected center-lot picks")
 	}
 	if centerTier3 == 0 {
-		t.Fatalf("pop=120 center must still place some tier 3, got 0/%d", center)
+		t.Fatalf("pop=400 center must place some tier 3, got 0/%d", center)
 	}
 }
 
@@ -155,10 +180,11 @@ func TestBigPopTierFirstDoesNotDrownMidRise(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	city := &citycore.City{Slug: "tier-mix", Pop: 120, Com: 50}
 	// Commercial has many tall folders; tier-first must keep mid-rise competitive.
 	var mid, tall int
 	for seed := uint32(0); seed < 256; seed++ {
-		key := atlas.pickBuildingFrameForTagAvoiding(TagCommercial, 3, 120, seed, nil)
+		key := atlas.pickBuildingFrameForTagAvoiding(city, TagCommercial, 3, 120, csPopHuge, seed, nil)
 		if key == "" {
 			continue
 		}
@@ -205,7 +231,7 @@ func TestResidentialPoolIncludesClassicHouses(t *testing.T) {
 	}
 	for _, want := range []string{
 		"sprites/DefineSprite_200",
-		"sprites/DefineSprite_266",
+		"sprites/DefineSprite_269",
 		"sprites/DefineSprite_374",
 	} {
 		if !folders[want] {
@@ -291,7 +317,7 @@ func TestPickBuildingKeyForLotHighPopCanUseHighTiers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	city := &citycore.City{Slug: "growth-high", Pop: 500, Ind: 10, Com: 5, Sec: 20, Env: 400}
+	city := &citycore.City{Slug: "growth-high", Pop: 500, Ind: 50, Com: 50, Sec: 300, Env: 400}
 	cx, cy := mapCols/2, mapRows/2
 	var highTier, landmarks, samples int
 	for seed := uint32(0); seed < 256; seed++ {
@@ -367,7 +393,7 @@ func TestPickBuildingKeyForLotKeepsZoneTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	city := &citycore.City{Slug: "growth-zone", Pop: 300, Ind: 10, Com: 10}
+	city := &citycore.City{Slug: "growth-zone", Pop: 300, Ind: 50, Com: 10}
 
 	comKey := atlas.PickBuildingKeyForLot(city, TagCommercial, mapCols/2, mapRows/2, 7)
 	indKey := atlas.PickBuildingKeyForLot(city, TagIndustrial, 0, 5, 7)

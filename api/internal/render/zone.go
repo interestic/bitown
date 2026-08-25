@@ -1,7 +1,6 @@
 package render
 
 import (
-	"math"
 	"sort"
 
 	"github.com/interestic/bitown/internal/citycore"
@@ -16,11 +15,12 @@ const (
 )
 
 type lotCell struct {
-	x, y   int
-	dist   int
-	jitter uint32
-	use    lotUse
-	tag    string
+	x, y    int
+	dist    int
+	jitter  uint32
+	use     lotUse
+	tag     string
+	density int // Game.hx square density covering this cell
 }
 
 func lotTouchesRoad(grid cityGrid, x, y int) bool {
@@ -41,7 +41,10 @@ func lotTouchesRoad(grid cityGrid, x, y int) bool {
 	return false
 }
 
-func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
+func lotOccupancyWithDensity(city *citycore.City, grid cityGrid, dens popDensity) map[[2]int]lotCell {
+	slug := city.Slug.String()
+	peonClip := !arterialsEnabled(city)
+
 	lots := make([]lotCell, 0, mapCols*mapRows)
 	cx, cy := mapCols/2, mapRows/2
 	for y := 0; y < mapRows; y++ {
@@ -51,11 +54,12 @@ func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
 			}
 			dx, dy := x-cx, y-cy
 			lots = append(lots, lotCell{
-				x:      x,
-				y:      y,
-				dist:   dx*dx + dy*dy,
-				jitter: hashCell(city.Slug.String(), x, y),
-				tag:    zoneTag(city, x, y),
+				x:       x,
+				y:       y,
+				dist:    dx*dx + dy*dy,
+				jitter:  hashCell(slug, x, y),
+				tag:     zoneTag(city, x, y),
+				density: localDensityAt(dens, x, y),
 			})
 		}
 	}
@@ -66,9 +70,6 @@ func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
 		return lots[i].jitter < lots[j].jitter
 	})
 
-	// Keep a 1-cell curb setback so Flash footprints do not bury arterial road
-	// diamonds (#33). Arterial-only roads leave large interior blocks, so density
-	// still reads Townzzy-like once interiors fill.
 	inner := make([]lotCell, 0, len(lots))
 	curb := make([]lotCell, 0, len(lots)/4)
 	for _, lot := range lots {
@@ -83,42 +84,29 @@ func lotOccupancy(city *citycore.City, grid cityGrid) map[[2]int]lotCell {
 	if parkN > len(inner)/3 {
 		parkN = len(inner) / 3
 	}
-	pop := city.Pop.Int()
-	if pop < popTierPeon {
-		fillPeonIslandLots(inner, pop, parkN)
-	} else {
-		fillRate := math.Min(0.92, math.Sqrt(float64(pop)/220.0))
-		fillN := int(math.Round(float64(len(inner)-parkN) * fillRate))
-		if fillN < 0 {
-			fillN = 0
-		}
-		for i := range inner {
-			switch {
-			case i >= len(inner)-parkN:
-				inner[i].use = lotPark
-			case i < fillN:
-				inner[i].use = lotBuilding
-			default:
-				inner[i].use = lotEmpty
-			}
-		}
-	}
 
+	fillLotsFromDensity(inner, city, dens, peonClip, parkN)
+
+	pop := city.Pop.Int()
 	out := make(map[[2]int]lotCell, len(lots))
 	for _, lot := range inner {
-		scatterTreeOnEmpty(&lot, city.Env.Int(), false)
+		scatterTreeOnEmpty(&lot, city.Env.Int(), false, pop)
 		out[[2]int{lot.x, lot.y}] = lot
 	}
 	for _, lot := range curb {
 		lot.use = lotEmpty
-		scatterTreeOnEmpty(&lot, city.Env.Int(), true)
+		scatterTreeOnEmpty(&lot, city.Env.Int(), true, pop)
 		out[[2]int{lot.x, lot.y}] = lot
 	}
+	clearParksOffGrass(out, pop)
 	return out
 }
 
-func scatterTreeOnEmpty(lot *lotCell, env int, curb bool) {
+func scatterTreeOnEmpty(lot *lotCell, env int, curb bool, pop int) {
 	if lot.use != lotEmpty || env <= 0 {
+		return
+	}
+	if !peonGrassTopCell(pop, lot.x, lot.y) {
 		return
 	}
 	chance := env / 2
@@ -130,6 +118,23 @@ func scatterTreeOnEmpty(lot *lotCell, env int, curb bool) {
 	}
 	if int(lot.jitter%1000) < chance { //#nosec G115
 		lot.use = lotPark
+		lot.tag = TagTree
+	}
+}
+
+// clearParksOffGrass is a safety net for parks that still land on the dalle
+// soil rim after placement filters (density TagTree / parkN).
+func clearParksOffGrass(occ map[[2]int]lotCell, pop int) {
+	for pos, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		if peonGrassTopCell(pop, lot.x, lot.y) {
+			continue
+		}
+		lot.use = lotEmpty
+		lot.tag = ""
+		occ[pos] = lot
 	}
 }
 

@@ -18,23 +18,24 @@ func isoTileCorners(topX, topY int) (t, r, b, l image.Point) {
 // drawRoadUnderlay paints continuous road diamonds (quad fill + seam stitch)
 // beneath mcRoad sprites. Quad edges follow 2:1 iso geometry more cleanly than
 // the row-span diamond helper, which reduces stair-step sparkle on long runs.
-func drawRoadUnderlay(img *image.RGBA, grid cityGrid) {
+func drawRoadUnderlay(img *image.RGBA, grid cityGrid, dy int) {
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
 			if grid[y][x] != cellRoad {
 				continue
 			}
 			topX, topY := isoCell(x, y)
+			topY += dy
 			t, r, b, l := isoTileCorners(topX, topY)
 			fillConvexQuad(img, t, r, b, l, roadColor)
 		}
 	}
-	stitchRoadSeams(img, grid)
+	stitchRoadSeams(img, grid, dy)
 	fillInteriorRoadSeams(img)
 }
 
 func drawRoadNetwork(img *image.RGBA, grid cityGrid) {
-	drawRoadUnderlay(img, grid)
+	drawRoadUnderlay(img, grid, 0)
 	softenRoadGrassBoundary(img)
 }
 
@@ -93,13 +94,14 @@ func blendRGBA(a, b color.RGBA, aWeight uint8) color.RGBA {
 
 // stitchRoadSeams repaints shared edges between adjacent road cells so integer
 // iso diamond rasterization cannot leave 1px grass-colored gaps.
-func stitchRoadSeams(img *image.RGBA, grid cityGrid) {
+func stitchRoadSeams(img *image.RGBA, grid cityGrid, dy int) {
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
 			if grid[y][x] != cellRoad {
 				continue
 			}
 			topX, topY := isoCell(x, y)
+			topY += dy
 			t, r, b, l := isoTileCorners(topX, topY)
 			if x+1 < mapCols && grid[y][x+1] == cellRoad {
 				drawThickLine(img, r, b, roadColor, 1)

@@ -37,32 +37,6 @@ func maxTierForPop(pop int) int {
 	}
 }
 
-// maxTierForLotTag applies the generic distance cap, then a wider house belt
-// on residential lots so 40×40 maps do not push houses into the corners only.
-// Industrial rim keeps the generic cap so warehouses still place (#49).
-// Empty tag uses the generic periphery cap (center grows first; far rim
-// stays house-scale even at huge pop — big_city #49).
-func maxTierForLotTag(pop, x, y int, tag string) int {
-	max := maxTierForPop(pop)
-	cx, cy := mapCols/2, mapRows/2
-	dx, dy := x-cx, y-cy
-	dist2 := dx*dx + dy*dy
-	outer := outerLotDist2()
-	if tag == TagResidential && pop < popTierHuge {
-		outer = outer / 2
-		if outer < 1 {
-			outer = 1
-		}
-	}
-	if dist2 > outer && max > 0 {
-		max--
-	}
-	if tag != TagIndustrial && dist2 >= outer*2 && max > 1 {
-		max = 1
-	}
-	return max
-}
-
 // landmarkMixPermille is the chance (0..1000) to draw from the landmark pool.
 // peon/normal: 0; big: small; huge: higher; sec/com give a weak boost.
 func landmarkMixPermille(pop, sec, com int) int {
@@ -201,11 +175,13 @@ func weightedIndex(weights []int, seed uint32) int {
 	return len(weights) - 1
 }
 
-func (a *Atlas) pickBuildingFrameForTagAvoiding(tag string, maxTier, pop int, seed uint32, avoid map[string]struct{}) string {
+func (a *Atlas) pickBuildingFrameForTagAvoiding(city *citycore.City, tag string, maxTier, pop, densityMax int, seed uint32, avoid map[string]struct{}) string {
 	if a == nil {
 		return ""
 	}
 	bases := filterBasesByMaxTier(a, a.BasesForTag(tag), maxTier)
+	bases = filterBasesByUnlock(a, bases, city)
+	bases = filterBasesByUpdateLib(a, bases, densityMax, pop)
 	if len(bases) == 0 {
 		return ""
 	}
@@ -213,6 +189,8 @@ func (a *Atlas) pickBuildingFrameForTagAvoiding(tag string, maxTier, pop int, se
 	// Tier first within that: one weight per tier so a huge tall catalog
 	// cannot drown mid-rise after bbox_h>=80 → tier 3 (#47/#48 review).
 	folders := filterFoldersAvoiding(uniqueSpriteFolders(bases), avoid)
+	folders = filterFoldersByUnlock(a, folders, city)
+	folders = filterFoldersByUpdateLib(a, folders, densityMax, pop)
 	folder := pickFolderByTierThenUniform(a, folders, pop, tag, seed)
 	if folder == "" {
 		return ""
@@ -228,6 +206,35 @@ func (a *Atlas) pickBuildingFrameForTagAvoiding(tag string, maxTier, pop int, se
 	}
 	picked := inFolder[int((seed>>8)%uint32(len(inFolder)))] //#nosec G115
 	return picked + "_v00.png"
+}
+
+func filterBasesByUpdateLib(a *Atlas, bases []string, densityMax, cityPop int) []string {
+	if a == nil || len(a.LibraryByFolder) == 0 {
+		return bases
+	}
+	out := make([]string, 0, len(bases))
+	for _, base := range bases {
+		folder := spriteFolderBase(base)
+		ref, ok := a.LibraryByFolder[folder]
+		if !ok || updateLibHouseUnlocked(ref.LibraryID, densityMax, cityPop) {
+			out = append(out, base)
+		}
+	}
+	return out
+}
+
+func filterFoldersByUpdateLib(a *Atlas, folders []string, densityMax, cityPop int) []string {
+	if a == nil || len(a.LibraryByFolder) == 0 {
+		return folders
+	}
+	out := make([]string, 0, len(folders))
+	for _, folder := range folders {
+		ref, ok := a.LibraryByFolder[folder]
+		if !ok || updateLibHouseUnlocked(ref.LibraryID, densityMax, cityPop) {
+			out = append(out, folder)
+		}
+	}
+	return out
 }
 
 func filterFoldersAvoiding(folders []string, avoid map[string]struct{}) []string {
@@ -292,15 +299,21 @@ func uniqueSpriteFolders(bases []string) []string {
 	return out
 }
 
-// PickBuildingKeyForLot picks a building frame using zone tag, pop/sector growth
-// tiers, and optional landmark mix (docs/map-building-growth.md). Falls back to
-// residential within the same tier cap; empty means callers draw a rectangle
-// (do not bypass the tier filter via PickBuildingKeyForTag).
+// PickBuildingKeyForLot picks a building frame using zone tag, local square
+// density (Game.hx) + periphery caps, updateLib house-library gates, and
+// optional landmark mix. Falls back to residential within the same tier cap;
+// empty means callers draw a rectangle (do not bypass via PickBuildingKeyForTag).
 func (a *Atlas) PickBuildingKeyForLot(city *citycore.City, tag string, x, y int, seed uint32) string {
-	return a.pickBuildingKeyForLot(city, tag, x, y, seed, nil)
+	local, densityMax := 0, 0
+	if city != nil {
+		dens := genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String()))
+		local = localDensityAt(dens, x, y)
+		densityMax = dens.max
+	}
+	return a.pickBuildingKeyForLot(city, tag, x, y, seed, nil, local, densityMax)
 }
 
-func (a *Atlas) pickBuildingKeyForLot(city *citycore.City, tag string, x, y int, seed uint32, avoid map[string]struct{}) string {
+func (a *Atlas) pickBuildingKeyForLot(city *citycore.City, tag string, x, y int, seed uint32, avoid map[string]struct{}, localDensity, densityMax int) string {
 	if a == nil {
 		return ""
 	}
@@ -309,20 +322,29 @@ func (a *Atlas) pickBuildingKeyForLot(city *citycore.City, tag string, x, y int,
 	}
 
 	pop := city.Pop.Int()
-	maxTier := maxTierForLotTag(pop, x, y, tag)
+	maxTier := maxTierForLotWithLocal(localDensity, pop, city.Ind.Int(), city.Com.Int(), x, y, tag)
+	const sectorMid = 50
+	if tag == TagIndustrial && city.Ind.Int() < sectorMid && maxTier > 1 {
+		maxTier = 1
+	}
+	if tag == TagCommercial && city.Com.Int() < sectorMid && maxTier > 1 {
+		maxTier = 1
+	}
 
 	if maxTier >= 3 {
 		chance := landmarkMixPermille(pop, city.Sec.Int(), city.Com.Int())
-		if chance > 0 && int(seed%1000) < chance { //#nosec G115
-			if key := a.pickBuildingFrameForTagAvoiding(TagLandmark, maxTier, pop, seed^0x9e3779b9, avoid); key != "" {
+		// Fold high and low bits — plain seed%1000 is biased for hashCell coords.
+		roll := int(((seed >> 16) ^ (seed >> 8) ^ seed) % 1000) //#nosec G115
+		if chance > 0 && roll < chance {
+			if key := a.pickBuildingFrameForTagAvoiding(city, TagLandmark, maxTier, pop, densityMax, seed^0x9e3779b9, avoid); key != "" {
 				return key
 			}
 		}
 	}
 
-	key := a.pickBuildingFrameForTagAvoiding(tag, maxTier, pop, seed, avoid)
+	key := a.pickBuildingFrameForTagAvoiding(city, tag, maxTier, pop, densityMax, seed, avoid)
 	if key == "" && tag != TagResidential {
-		key = a.pickBuildingFrameForTagAvoiding(TagResidential, maxTier, pop, seed, avoid)
+		key = a.pickBuildingFrameForTagAvoiding(city, TagResidential, maxTier, pop, densityMax, seed, avoid)
 	}
 	return key
 }
@@ -331,7 +353,7 @@ var cardinalDirs = [4][2]int{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}
 
 // assignBuildingKeys picks frames in raster order, skipping high-tier folders
 // already used on a cardinal neighbor. Low-tier houses may still clump.
-func assignBuildingKeys(atlas *Atlas, city *citycore.City, occ map[[2]int]lotCell) map[[2]int]string {
+func assignBuildingKeys(atlas *Atlas, city *citycore.City, occ map[[2]int]lotCell, densityMax int) map[[2]int]string {
 	if atlas == nil || city == nil {
 		return nil
 	}
@@ -361,7 +383,7 @@ func assignBuildingKeys(atlas *Atlas, city *citycore.City, occ map[[2]int]lotCel
 		}
 		lot := occ[[2]int{p.x, p.y}]
 		seed := hashCell(slug, p.x, p.y)
-		keys[[2]int{p.x, p.y}] = atlas.pickBuildingKeyForLot(city, lot.tag, p.x, p.y, seed, avoid)
+		keys[[2]int{p.x, p.y}] = atlas.pickBuildingKeyForLot(city, lot.tag, p.x, p.y, seed, avoid, lot.density, densityMax)
 	}
 	return keys
 }

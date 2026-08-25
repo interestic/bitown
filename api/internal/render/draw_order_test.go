@@ -41,7 +41,6 @@ func TestSortMapObjectsByDepthThenHeight(t *testing.T) {
 	}
 }
 
-
 func TestBuildingPoolExcludesWaterAndTrees(t *testing.T) {
 	requireAtlasFiles(t)
 	atlas, err := loadAtlas()

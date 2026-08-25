@@ -8,32 +8,20 @@ import (
 
 // buildingGroundBand is the vertical footprint near the foot used to clear
 // sideways spill into street diamonds without slicing mid/upper facades.
-const buildingGroundBand = isoTileH // clear only near the foot onto streets
+const buildingGroundBand = isoTileH + roadGrassLift // foot + grass lift onto streets
 
 type roadMaskData struct {
 	mask []bool
 }
 
-func buildRoadMaskData(grid cityGrid) roadMaskData {
+func buildRoadMaskDataOffset(grid cityGrid, dy int) roadMaskData {
 	mask := make([]bool, mapWidth*mapHeight)
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
 			if grid[y][x] != cellRoad {
 				continue
 			}
-			markIsoDiamondMask(mask, mapWidth, x, y, 1)
-		}
-	}
-	return roadMaskData{mask: mask}
-}
-
-// buildPlatformMask marks every map cell diamond so road sprites can be clipped
-// to the iso island (prevents mcRoad stubs hanging past the dalle rim).
-func buildPlatformMask() roadMaskData {
-	mask := make([]bool, mapWidth*mapHeight)
-	for y := 0; y < mapRows; y++ {
-		for x := 0; x < mapCols; x++ {
-			markIsoDiamondMask(mask, mapWidth, x, y, 1)
+			markIsoDiamondMaskOffset(mask, mapWidth, x, y, 1, dy)
 		}
 	}
 	return roadMaskData{mask: mask}
@@ -47,7 +35,7 @@ type peonGrass struct {
 	maxY []int
 }
 
-func buildPeonGrass() peonGrass {
+func buildPeonGrass(pop int) peonGrass {
 	g := peonGrass{
 		mask: make([]bool, mapWidth*mapHeight),
 		col:  make([]bool, mapWidth),
@@ -56,8 +44,8 @@ func buildPeonGrass() peonGrass {
 	for i := range g.maxY {
 		g.maxY[i] = -1
 	}
-	o := peonIslandOrigin()
-	e := peonIslandExtent()
+	o := peonIslandOriginFor(pop)
+	e := peonIslandExtentFor(pop)
 	for y := o; y < o+e; y++ {
 		for x := o; x < o+e; x++ {
 			markIsoDiamondMask(g.mask, mapWidth, x, y, 1)
@@ -86,7 +74,12 @@ func peonPixelSupported(g peonGrass, px, py int) bool {
 }
 
 func markIsoDiamondMask(mask []bool, stride, cellX, cellY, edgeOverlap int) {
+	markIsoDiamondMaskOffset(mask, stride, cellX, cellY, edgeOverlap, 0)
+}
+
+func markIsoDiamondMaskOffset(mask []bool, stride, cellX, cellY, edgeOverlap, dy int) {
 	topX, topY := isoCell(cellX, cellY)
+	topY += dy
 	halfH := isoTileH / 2
 	halfW := isoTileW / 2
 	if halfH == 0 {
@@ -126,7 +119,12 @@ func inBuildingGroundBand(footY, py int) bool {
 }
 
 func pointInIsoDiamond(px, py, cellX, cellY int) bool {
+	return pointInIsoDiamondOffset(px, py, cellX, cellY, 0)
+}
+
+func pointInIsoDiamondOffset(px, py, cellX, cellY, dy int) bool {
 	topX, topY := isoCell(cellX, cellY)
+	topY += dy
 	halfH := isoTileH / 2
 	halfW := isoTileW / 2
 	row := py - topY
@@ -142,9 +140,43 @@ func pointInIsoDiamond(px, py, cellX, cellY int) bool {
 	return px >= topX-half && px <= topX+half
 }
 
-// skipBuildingPixelOnRoad clears only the ground-band spill onto street diamonds.
-// Upper facade may overhang neighboring lots (Flash sprites are wider than one
-// tile); forcing a lot-column clip sliced apartment walls in half.
+// pointInIsoBlockOffset is the iso diamond covering an n×n mini-cell block
+// (one Game.hx square / mcDalle plate), optionally expanded from its center.
+func pointInIsoBlockOffset(px, py, x0, y0, n, dy int, expand float64) bool {
+	if n <= 0 {
+		return false
+	}
+	topX, topY := isoCell(x0, y0)
+	topY += dy
+	h := n * isoTileH
+	w := n * isoTileW
+	if expand > 0 {
+		cx, cy := topX, topY+h/2
+		px = cx + int(float64(px-cx)/(1+expand))
+		py = cy + int(float64(py-cy)/(1+expand))
+	}
+	row := py - topY
+	if row < 0 || row >= h {
+		return false
+	}
+	halfH := h / 2
+	halfW := w / 2
+	if halfH == 0 {
+		return false
+	}
+	var half int
+	if row < halfH {
+		half = row * halfW / halfH
+	} else {
+		half = (h - 1 - row) * halfW / halfH
+	}
+	return px >= topX-half && px <= topX+half
+}
+
+// skipBuildingPixelOnRoad clears ground-band spill onto lifted street diamonds.
+// The band includes the dalle soil lip so curb stays clear after the 20px grass
+// lift. Upper facade may overhang neighboring lots (Flash sprites are wider
+// than one tile); forcing a lot-column clip sliced apartment walls in half.
 func skipBuildingPixelOnRoad(roads roadMaskData, footY, px, py, lotX, lotY int) bool {
 	if !inBuildingGroundBand(footY, py) || !roadMaskedAt(roads.mask, px, py) {
 		return false
