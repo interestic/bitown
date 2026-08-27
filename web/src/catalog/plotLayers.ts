@@ -1,6 +1,9 @@
 import {
   DALLE_CELLS,
   DALLE_TOP_H,
+  CROSS_STAMP_FOOT_LOCAL,
+  CROSS_STAMP_NUDGE_Y,
+  CROSS_STAMP_SE_LOCAL,
   ISO_TILE_H,
   ISO_TILE_W,
 } from "./lotPatterns";
@@ -10,6 +13,13 @@ import type { FrameRect } from "./types";
 export type PlotStamp = {
   frame: FrameRect;
   cell?: readonly [number, number];
+  /** Clip stamp pixels to the dalle grass top (farm overlays). */
+  clipToDalleTop?: boolean;
+  /** Screen-space nudge after foot placement (API westMiniStampNudgeX). */
+  offsetX?: number;
+  offsetY?: number;
+  /** Paint order; default 2 (roads/cross use 1 so they sit under huts). */
+  z?: number;
 };
 
 export type EdgeClipMode = "rim" | "shared" | "exterior";
@@ -252,7 +262,19 @@ export function buildPlotLayers({
   for (const stamp of stamps) {
     const cell = stamp.cell ?? ([1, 1] as const);
     const delta = cellFootDelta(cell[0], cell[1]);
-    layers.push(placeAtFoot(stamp.frame, footX + delta.dx, footY + delta.dy - lip, 2));
+    layers.push(
+      placeAtFoot(
+        stamp.frame,
+        footX + delta.dx + (stamp.offsetX ?? 0),
+        footY + delta.dy - lip + (stamp.offsetY ?? 0),
+        stamp.z ?? 2,
+        {
+          clipToDalleTop: stamp.clipToDalleTop,
+          clipFootX: footX,
+          clipFootY: footY,
+        },
+      ),
+    );
   }
 
   return layers;
@@ -389,10 +411,20 @@ export function buildGenSquareRoadLayers(
       }
 
       if (tile.cross && crossFrame && crossBase) {
+        // API squareCrossFoot: local 7 vs SE 9 → Δcell (−2,−2) + CROSS_STAMP_NUDGE_Y.
+        const dCell = CROSS_STAMP_FOOT_LOCAL - CROSS_STAMP_SE_LOCAL;
+        const crossOx = (dCell - dCell) * (ISO_TILE_W / 2);
+        const crossOy = (dCell + dCell) * (ISO_TILE_H / 2) + CROSS_STAMP_NUDGE_Y;
         layers.push(
-          placeAtFoot(crossFrame, dx + crossBase.x, dy + crossBase.y, 2, {
-            clipWorldPolygon: expandedDalleTopWorld(dalle, dx, dy, 0.12),
-          }),
+          placeAtFoot(
+            crossFrame,
+            dx + crossBase.x + crossOx,
+            dy + crossBase.y + crossOy,
+            2,
+            {
+              clipWorldPolygon: expandedDalleTopWorld(dalle, dx, dy, 0.12),
+            },
+          ),
         );
       }
     }

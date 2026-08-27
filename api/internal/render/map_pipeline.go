@@ -17,9 +17,10 @@ type mapRenderCtx struct {
 	order        []mapCoord
 	buildingKeys map[[2]int]string
 	roads        roadMaskData
-	grass        peonGrass
-	peon         bool
+	grass        plateGrass
+	roadless     bool
 	pop          int
+	dens         popDensity
 	densityMax   int
 	roadLift     int
 	roadStamps   []roadStamp
@@ -32,10 +33,10 @@ func newMapRenderCtx(city *citycore.City, atlas *Atlas) mapRenderCtx {
 	dens := genMapPop(pop, newMapRNG(slug))
 	roads := planRoads(city, dens)
 	occupancy := lotOccupancyWithDensity(city, roads.grid, dens)
-	peon := !arterialsEnabled(city)
+	roadless := !arterialsEnabled(city)
 	roadLift := 0
-	if atlas != nil && !peon {
-		// SE foot (same as mcDalle) + roadGrassLift onto the plate top.
+	if atlas != nil && !roadless {
+		// Center cell foot + plate lip onto the grass top (Townzzy cross).
 		roadLift = roadGrassLift
 	}
 	ctx := mapRenderCtx{
@@ -46,8 +47,9 @@ func newMapRenderCtx(city *citycore.City, atlas *Atlas) mapRenderCtx {
 		occupancy:  occupancy,
 		order:      mapDrawOrder(),
 		roads:      buildRoadMaskDataOffset(roads.grid, -roadLift),
-		peon:       peon,
+		roadless:   roadless,
 		pop:        pop,
+		dens:       dens,
 		densityMax: dens.max,
 		roadLift:   roadLift,
 		roadStamps: roads.stamps,
@@ -56,15 +58,13 @@ func newMapRenderCtx(city *citycore.City, atlas *Atlas) mapRenderCtx {
 	if atlas != nil {
 		ctx.buildingKeys = assignBuildingKeys(atlas, city, occupancy, dens.max)
 	}
-	if ctx.peon {
-		ctx.grass = buildPeonGrass(pop)
-	}
+	ctx.grass = buildPlateGrass(pop)
 	return ctx
 }
 
-func mapCanvasColor(peon bool) color.RGBA {
-	if peon {
-		// Soft sky field like Townzzy peon pages (not terrain grass).
+func mapCanvasColor(roadless bool) color.RGBA {
+	if roadless {
+		// Soft sky field like Townzzy roadless pages (not terrain grass).
 		return color.RGBA{R: 186, G: 220, B: 235, A: 255}
 	}
 	return grassColor
@@ -72,7 +72,7 @@ func mapCanvasColor(peon bool) color.RGBA {
 
 func drawMapFloor(img *image.RGBA, ctx mapRenderCtx) {
 	for _, cell := range ctx.order {
-		if ctx.peon && !inPeonIslandFor(ctx.pop, cell.x, cell.y) {
+		if !inPlateIsland(ctx.pop, cell.x, cell.y) {
 			continue
 		}
 		topX, topY := isoCell(cell.x, cell.y)
@@ -83,13 +83,13 @@ func drawMapFloor(img *image.RGBA, ctx mapRenderCtx) {
 		drawIsoDiamond(img, topX, topY, ground, 0)
 	}
 	if ctx.atlas != nil {
-		drawGroundBlocks(img, ctx.atlas, ctx.slug, ctx.peon, ctx.pop)
-		// Townzzy: empty mini-squares get champs after dalle, before roads/buildings.
+		drawGroundBlocks(img, ctx.atlas, ctx.slug, ctx.roadless, ctx.pop)
+		// Townzzy: empty mini-squares get farm after plates, before roads/buildings.
 		drawFarmBlocks(img, ctx)
-		if !ctx.peon {
+		if !ctx.roadless {
 			drawAtlasRoadSprites(img, ctx)
 		}
-	} else if !ctx.peon {
+	} else if !ctx.roadless {
 		drawRoadNetwork(img, ctx.grid)
 	}
 }
@@ -110,7 +110,7 @@ func drawAtlasRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
 		footX, footY := squareRoadFoot(st.sx, st.sy, -ctx.roadLift)
 		ox, oy := axisOverlapNudge(ctx.roadStamps, st)
 		// Clip at the same lift as the foot (catalog: dalle-top diamond).
-		_ = ctx.atlas.drawRoadOnSquare(img, key, footX+ox, footY+oy, st.sx, st.sy, -ctx.roadLift, 0.22)
+		_ = ctx.atlas.drawRoadOnSquare(img, key, footX+ox, footY+oy, st.sx, st.sy, -ctx.roadLift, 0.22, ctx.grass)
 	}
 	if len(ctx.roadCross) == 0 {
 		return
@@ -125,17 +125,42 @@ func drawAtlasRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
 			if key == "" {
 				continue
 			}
-			footX, footY := squareRoadFoot(sx, sy, -ctx.roadLift)
-			_ = ctx.atlas.drawRoadOnSquare(img, key, footX, footY, sx, sy, -ctx.roadLift, 0.12)
+			// CROSS foot: local 7 + screen nudgeY (sandbox map-base contract).
+			// Arterials stay on SE foot so strip tips still meet square edges.
+			footX, footY := squareCrossFoot(sx, sy, -ctx.roadLift)
+			_ = ctx.atlas.drawRoadOnSquare(img, key, footX, footY, sx, sy, -ctx.roadLift, 0.12, ctx.grass)
 		}
 	}
 }
 
-// squareRoadFoot is the SE mini-cell of the square — same foot as
-// drawGroundBlocks / catalog dalleBlockFootDelta, lifted onto mcDalle grass.
+// squareRoadFoot is the SE mini-cell of the square, lifted onto plate grass.
+// Matches catalog dalleBlockFootDelta / Game.hx genSquare stamp origin.
 func squareRoadFoot(sx, sy, dy int) (footX, footY int) {
-	x := sx*squareSide + squareSide - 1
-	y := sy*squareSide + squareSide - 1
+	return cellRoadFoot(sx*squareSide+squareSide-1, sy*squareSide+squareSide-1, dy)
+}
+
+// crossStampFootLocal is the square-local cell for DefineSprite_705.
+// Game.hx / older pipeline used SE (9). Sandbox map-base settled on 7 so the
+// X sits less 下象限-biased while 705's SE-anchored art stays on-plate.
+const crossStampFootLocal = 7
+
+// crossStampNudgeY shifts CROSS up in screen space (negative = up).
+// Arterials (702) stay on SE foot — confirmed with sandbox map-base #11.
+const crossStampNudgeY = -13
+
+// squareCrossFoot is the CROSS stamp foot for a square (local 7 + screen nudge).
+func squareCrossFoot(sx, sy, dy int) (footX, footY int) {
+	footX, footY = cellRoadFoot(sx*squareSide+crossStampFootLocal, sy*squareSide+crossStampFootLocal, dy)
+	return footX, footY + crossStampNudgeY
+}
+
+func cellRoadFoot(x, y, dy int) (footX, footY int) {
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
 	if x >= mapCols {
 		x = mapCols - 1
 	}
@@ -185,7 +210,7 @@ func collectMapObjects(ctx mapRenderCtx) []mapObject {
 		if !ok {
 			continue
 		}
-		if ctx.peon && !inPeonIslandFor(ctx.pop, cell.x, cell.y) {
+		if !inPlateIsland(ctx.pop, cell.x, cell.y) {
 			continue
 		}
 		switch lot.use {
@@ -225,27 +250,34 @@ func paintMapObjects(img *image.RGBA, ctx mapRenderCtx, objs []mapObject, paint 
 	for _, obj := range objs {
 		topX, topY := isoCell(obj.x, obj.y)
 		footX, footY := topX, topY+isoTileH
+		if ctx.atlas != nil || ctx.roadless {
+			footX, footY = overlayFoot(obj.x, obj.y, overlayLift(ctx.roadless))
+		}
 		switch obj.kind {
 		case objectPark:
 			if ctx.atlas != nil && obj.key != "" {
-				if ctx.peon {
-					_ = ctx.atlas.drawFrameOnPeonGrass(img, obj.key, footX, footY, ctx.grass)
-				} else {
-					_ = ctx.atlas.drawFrameAtFoot(img, obj.key, footX, footY)
-				}
+				_ = ctx.atlas.drawFrameOnGrassTop(img, obj.key, footX, footY, ctx.grass)
 			}
 		case objectBuilding:
+			// overlayFoot already applied plate lift; add mini stamp nudges
+			// from sandbox map-base (west/north/SE/EW/east).
+			footX = applyWestMiniStampNudge(footX, obj.x, obj.y)
+			footX = applyNorthMiniStampNudgeX(footX, obj.x, obj.y)
+			footX = applyEastMiniStampNudge(footX, obj.x, obj.y)
+			footY = applyNorthMiniStampNudge(footY, obj.x, obj.y)
+			footY = applySEMiniStampNudge(footY, obj.x, obj.y)
+			footY = applyEWMiniStampNudge(footY, obj.x, obj.y)
 			if ctx.atlas != nil && obj.key != "" {
-				if ctx.peon {
-					if ctx.atlas.drawFrameOnPeonGrass(img, obj.key, footX, footY, ctx.grass) {
+				if ctx.roadless {
+					if ctx.atlas.drawFrameOnGrassTop(img, obj.key, footX, footY, ctx.grass) {
 						continue
 					}
-				} else if ctx.atlas.drawBuildingAtFoot(img, obj.key, footX, footY, obj.x, obj.y, ctx.roads) {
+				} else if ctx.atlas.drawBuildingAtFoot(img, obj.key, footX, footY, obj.x, obj.y, ctx.roads, ctx.grass) {
 					continue
 				}
 			}
-			if ctx.peon {
-				drawFallbackBuildingOnPeonGrass(img, obj.seed, footX, footY, ctx.grass)
+			if ctx.roadless {
+				drawFallbackBuildingOnGrassTop(img, obj.seed, footX, footY, ctx.grass)
 				continue
 			}
 			paint(img, obj.seed, obj.tag, footX, footY, obj.x, obj.y, ctx.roads)

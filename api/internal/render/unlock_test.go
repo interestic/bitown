@@ -60,7 +60,7 @@ func TestPickBuildingKeyRespectsUnlockAtLowPop(t *testing.T) {
 	cx, cy := mapCols/2, mapRows/2
 	key := atlas.PickBuildingKeyForLot(city, TagResidential, cx, cy, hashCell(city.Slug.String(), cx, cy))
 	if key == "" {
-		t.Fatal("expected a building at center peon pop")
+		t.Fatal("expected a building at center roadless pop")
 	}
 	if atlas.folderTier(spriteFolderBase(key)) >= 2 {
 		t.Fatalf("pop=20 must not place tier>=2, got tier %d key %s", atlas.folderTier(spriteFolderBase(key)), key)

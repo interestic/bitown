@@ -129,7 +129,7 @@ func planRoads(city *citycore.City, dens popDensity) roadPlan {
 	}
 	coef := cityRoadCoef(city)
 	active := activeSquareSide(city.Pop.Int())
-	origin := (displaySide - active) / 2
+	origin := activeSquareOrigin(city.Pop.Int())
 	for sy := origin; sy < origin+active; sy++ {
 		for sx := origin; sx < origin+active; sx++ {
 			for dir := 0; dir < 2; dir++ {

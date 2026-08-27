@@ -16,9 +16,9 @@ func TestIsoTileMatchesMinivilleCs(t *testing.T) {
 	}
 }
 
-// peonDalleGridFor is the number of mcDalle plates along one axis of the peon field.
-func peonDalleGridFor(pop int) int {
-	e := peonExtentCells(pop)
+// plateGridFor is the number of mcDalle plates along one axis of the roadless field.
+func plateGridFor(pop int) int {
+	e := plateIslandExtentCells(pop)
 	g := e / groundBlock
 	if g < 1 {
 		g = 1
@@ -26,14 +26,14 @@ func peonDalleGridFor(pop int) int {
 	return g
 }
 
-// Legacy helpers used by tests that assume a typical peon pop (pop=20 →
-// flashDisplaySide=6 → full 60×60 crop of 6×6 dales).
-func peonIslandOrigin() int {
-	return peonIslandOriginFor(20)
+// Legacy helpers used by tests that assume a typical roadless pop (pop=20 →
+// flashDisplaySide=6 → full 60×60 crop of 6×6 plates).
+func plateIslandOrigin20() int {
+	return plateIslandOrigin(20)
 }
 
-func peonIslandExtent() int {
-	return peonIslandExtentFor(20)
+func plateIslandExtent20() int {
+	return plateIslandExtent(20)
 }
 
 func TestAtlasMapUsesGroundAndRoadSprites(t *testing.T) {
@@ -68,7 +68,7 @@ func TestPickGroundKeyPrefersMcDalle(t *testing.T) {
 	}
 }
 
-func TestPeonPop1RendersSixBySixCrop(t *testing.T) {
+func TestRoadlessPop1RendersSixBySixCrop(t *testing.T) {
 	requireAtlasFiles(t)
 	data, err := BuildCityMapPNG(&citycore.City{Slug: "duisburg", Pop: 1})
 	if err != nil {
@@ -76,11 +76,14 @@ func TestPeonPop1RendersSixBySixCrop(t *testing.T) {
 	}
 	img := decodeMapPNG(t, data)
 	b := img.Bounds()
-	if b.Dx() != mapWidth || b.Dy() != mapHeight {
-		t.Fatalf("png %dx%d, want %dx%d", b.Dx(), b.Dy(), mapWidth, mapHeight)
+	if b.Dx() != b.Dy() {
+		t.Fatalf("png %dx%d, want square", b.Dx(), b.Dy())
 	}
-	if displaySide != 6 || peonDalleGridFor(1) != 6 {
-		t.Fatalf("pop=1 field %d squares / %d dales, want 6×6", displaySide, peonDalleGridFor(1))
+	if b.Dx() < mapMinSquare {
+		t.Fatalf("png %dx%d, want at least %d (3×3 plate viewport floor)", b.Dx(), b.Dy(), mapMinSquare)
+	}
+	if displaySide != 25 || plateGridFor(1) != 6 {
+		t.Fatalf("pop=1 field %d squares / %d dales, want displaySide=25 and 6×6 island", displaySide, plateGridFor(1))
 	}
 	if path := os.Getenv("BITOWN_DUMP_MAP"); path != "" {
 		if err := os.WriteFile(path, data, 0644); err != nil {
@@ -90,13 +93,52 @@ func TestPeonPop1RendersSixBySixCrop(t *testing.T) {
 }
 
 func TestDalleGrassLiftMatchesFarmAndCatalogLip(t *testing.T) {
-	if dalleGrassLift != 20 {
-		t.Fatalf("dalleGrassLift=%d, want 20 (mcDalle soil sides)", dalleGrassLift)
+	if plateGrassLift != 20 {
+		t.Fatalf("plateGrassLift=%d, want 20 (mcDalle soil sides)", plateGrassLift)
 	}
-	if roadGrassLift != dalleGrassLift-isoTileH {
-		t.Fatalf("roadGrassLift=%d, want dalleGrassLift-isoTileH (%d)", roadGrassLift, dalleGrassLift-isoTileH)
+	if roadGrassLift != plateGrassLift {
+		t.Fatalf("roadGrassLift=%d, want plateGrassLift=%d (catalog / Townzzy)", roadGrassLift, plateGrassLift)
 	}
-	if farmGrassLift != dalleGrassLift {
-		t.Fatalf("farmGrassLift=%d, want dalleGrassLift=%d", farmGrassLift, dalleGrassLift)
+	if farmGrassLift != plateGrassLift {
+		t.Fatalf("farmGrassLift=%d, want plateGrassLift=%d", farmGrassLift, plateGrassLift)
+	}
+	if overlayLift(true) != plateGrassLift || overlayLift(false) != plateGrassLift {
+		t.Fatalf("overlayLift roadless=%d arterial=%d, want %d", overlayLift(true), overlayLift(false), plateGrassLift)
+	}
+	topX, topY := isoCell(10, 20)
+	fx, fy := overlayFoot(10, 20, plateGrassLift)
+	if fx != topX || fy != topY+isoTileH-plateGrassLift {
+		t.Fatalf("overlayFoot=(%d,%d), want (%d,%d)", fx, fy, topX, topY+isoTileH-plateGrassLift)
+	}
+}
+
+func TestSquareRoadFootIsSquareSE(t *testing.T) {
+	sx, sy := 2, 3
+	footX, footY := squareRoadFoot(sx, sy, 0)
+	cx := sx*squareSide + squareSide - 1
+	cy := sy*squareSide + squareSide - 1
+	topX, topY := isoCell(cx, cy)
+	wantX, wantY := topX, topY+isoTileH
+	if footX != wantX || footY != wantY {
+		t.Fatalf("squareRoadFoot=(%d,%d), want SE cell (%d,%d) foot (%d,%d)", footX, footY, cx, cy, wantX, wantY)
+	}
+}
+
+func TestSquareCrossFootUsesLocal7AndNudgeY(t *testing.T) {
+	sx, sy := 2, 3
+	footX, footY := squareCrossFoot(sx, sy, 0)
+	cx := sx*squareSide + crossStampFootLocal
+	cy := sy*squareSide + crossStampFootLocal
+	topX, topY := isoCell(cx, cy)
+	wantX, wantY := topX, topY+isoTileH+crossStampNudgeY
+	if footX != wantX || footY != wantY {
+		t.Fatalf("squareCrossFoot=(%d,%d), want (%d,%d)", footX, footY, wantX, wantY)
+	}
+	seX, seY := squareRoadFoot(sx, sy, 0)
+	if footY >= seY {
+		t.Fatalf("cross footY=%d should be above SE arterial footY=%d", footY, seY)
+	}
+	if footX != seX {
+		t.Fatalf("cross footX=%d should match SE footX=%d (Δcell is NW along diagonal)", footX, seX)
 	}
 }

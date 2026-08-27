@@ -58,19 +58,19 @@ func TestCityGridUsesSquareSideNesting(t *testing.T) {
 	}
 }
 
-func TestPeonCityHasNoArterials(t *testing.T) {
-	grid := buildCityGridForCity(&citycore.City{Slug: "peon", Pop: 1})
+func TestRoadlessCityHasNoArterials(t *testing.T) {
+	grid := buildCityGridForCity(&citycore.City{Slug: "roadless", Pop: 1})
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
 			if grid[y][x] == cellRoad {
-				t.Fatalf("peon map should have no roads, found at (%d,%d)", x, y)
+				t.Fatalf("roadless map should have no roads, found at (%d,%d)", x, y)
 			}
 		}
 	}
 }
 
 func TestTransportUnlocksArterials(t *testing.T) {
-	// pop<80 would be peon (no streets) without Tra; Game.hx c*roadCoef still
+	// pop<80 would be roadless (no streets) without Tra; Game.hx c*roadCoef still
 	// needs some square density, so this is a small town rather than pop=1.
 	grid := buildCityGridForCity(&citycore.City{Slug: "tra", Pop: 40, Tra: 10})
 	found := false
@@ -118,8 +118,14 @@ func TestRoadStyleFromScoreThresholds(t *testing.T) {
 
 func TestPlanRoadsUsesDirtThenAsphalt(t *testing.T) {
 	dens := uniformDensity(2)
-	dens.cells[2][2] = 8
-	dens.cells[3][3] = 40
+	// Dense cells must sit inside the live island (Game.hx-aligned), not the
+	// geometric corner of the displaySide crop.
+	o80 := activeSquareOrigin(80)
+	o500 := activeSquareOrigin(500)
+	dens.cells[o80][o80] = 8
+	a500 := activeSquareSide(500)
+	cx := o500 + a500/2
+	dens.cells[cx][cx] = 40
 	dens.max = 40
 	low := planRoads(&citycore.City{Slug: "dirt-town", Pop: 80}, dens)
 	if !planHasStyle(low, roadStyleDirt) && !planHasStyle(low, roadStyleThin) {

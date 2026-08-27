@@ -69,7 +69,10 @@ func TestBuildCityMapPNG(t *testing.T) {
 		t.Fatalf("failed to decode png: %v", err)
 	}
 	b := img.Bounds()
-	if b.Dx() != mapWidth || b.Dy() != mapHeight {
-		t.Fatalf("unexpected dimensions: got %dx%d, want %dx%d", b.Dx(), b.Dy(), mapWidth, mapHeight)
+	if b.Dx() != b.Dy() {
+		t.Fatalf("unexpected dimensions: got %dx%d, want square", b.Dx(), b.Dy())
+	}
+	if b.Dx() < mapMinSquare {
+		t.Fatalf("png %dx%d, want at least %d square", b.Dx(), b.Dy(), mapMinSquare)
 	}
 }

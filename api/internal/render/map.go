@@ -16,10 +16,9 @@ import (
 
 const (
 	// Miniville Cs.hx: SIDE squares of SQUARE_SIDE mini-cells. Full SIDE=30 is
-	// ~300×300 (~7k×4k PNG). bitown crops to displaySide squares so map.png
-	// stays API-sized; peon field grows with Game.hx displaySide up to that crop.
-	// Crop 6 matches Game.hx / Townzzy at pop=1 (Std.int margin → displaySide=6).
-	displaySide = 6
+	// ~300×300 (~7k×4k PNG). bitown crops density to displaySide squares (max 25)
+	// and fits the live island into a square PNG (max(769, island width)).
+	displaySide = 25
 	squareSide  = 10 // Cs.SQUARE_SIDE
 
 	mapCols = displaySide * squareSide
@@ -33,6 +32,11 @@ const (
 	// One mcDalle per square (Game.hx addBat size=5 at square origin).
 	// genMiniSquare's 4-cell grid is building placement, not ground stamps.
 	groundBlock = squareSide
+
+	// mapMinSquare is the viewport for islands whose width is under a 3×3 plate
+	// crop (769). Smaller towns sit centered in this square.
+	mapMinSquare = 769
+	mapCanvasPad = 24
 )
 
 var (
@@ -84,7 +88,7 @@ func atlasRequired() bool {
 func buildAtlasMapPNG(city *citycore.City, atlas *Atlas) ([]byte, error) {
 	return renderMapTiles(city, atlas, func(img *image.RGBA, cellSeed uint32, tag string, footX, footY, lotX, lotY int, roads roadMaskData) {
 		key := atlas.PickBuildingKeyForLot(city, tag, lotX, lotY, cellSeed)
-		if key == "" || !atlas.drawBuildingAtFoot(img, key, footX, footY, lotX, lotY, roads) {
+		if key == "" || !atlas.drawBuildingAtFoot(img, key, footX, footY, lotX, lotY, roads, plateGrass{}) {
 			drawFallbackBuildingClipped(img, cellSeed, footX, footY, lotX, lotY, roads)
 		}
 	})
@@ -102,10 +106,156 @@ func isoCell(x, y int) (topX, topY int) {
 	return topX, topY
 }
 
+func newMapWorkingImage(originCell, extentCells int) *image.RGBA {
+	return image.NewRGBA(isoIslandWorkingBounds(originCell, extentCells))
+}
+
+func isoIslandWorkingBounds(originCell, extentCells int) image.Rectangle {
+	if extentCells < 1 {
+		return image.Rect(0, 0, mapWidth, mapHeight)
+	}
+	x0, y0 := originCell, originCell
+	x1, y1 := originCell+extentCells-1, originCell+extentCells-1
+	corners := [4][2]int{{x0, y0}, {x1, y0}, {x0, y1}, {x1, y1}}
+	minX, minY := mapWidth, mapHeight
+	maxX, maxY := 0, 0
+	for _, c := range corners {
+		tx, ty := isoCell(c[0], c[1])
+		left, right := tx-isoTileW/2, tx+isoTileW/2
+		top, bot := ty, ty+isoTileH
+		if left < minX {
+			minX = left
+		}
+		if top < minY {
+			minY = top
+		}
+		if right > maxX {
+			maxX = right
+		}
+		if bot > maxY {
+			maxY = bot
+		}
+	}
+	minX -= isoPad
+	minY -= isoPad
+	maxX += isoPad
+	maxY += isoPad
+	if minX < 0 {
+		minX = 0
+	}
+	if minY < 0 {
+		minY = 0
+	}
+	if maxX > mapWidth {
+		maxX = mapWidth
+	}
+	if maxY > mapHeight {
+		maxY = mapHeight
+	}
+	if maxX <= minX || maxY <= minY {
+		return image.Rect(0, 0, mapWidth, mapHeight)
+	}
+	return image.Rect(minX, minY, maxX, maxY)
+}
+
+func mapSquareSize(contentW int) int {
+	if contentW < mapMinSquare {
+		return mapMinSquare
+	}
+	return contentW
+}
+
+func fitMapPNGCanvas(src *image.RGBA, sky color.RGBA) *image.RGBA {
+	cropped := cropMapCanvasToContent(src, sky, mapCanvasPad)
+	return letterboxMapCanvasSquare(cropped, sky, mapSquareSize(cropped.Bounds().Dx()))
+}
+
+func cropMapCanvasToContent(src *image.RGBA, sky color.RGBA, pad int) *image.RGBA {
+	b := src.Bounds()
+	minX, minY := b.Max.X, b.Max.Y
+	maxX, maxY := b.Min.X-1, b.Min.Y-1
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			i := src.PixOffset(x, y)
+			r, g, bl, a := src.Pix[i], src.Pix[i+1], src.Pix[i+2], src.Pix[i+3]
+			if a == 0 || (r == sky.R && g == sky.G && bl == sky.B) {
+				continue
+			}
+			if x < minX {
+				minX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
+		}
+	}
+	if maxX < minX {
+		return src
+	}
+	minX -= pad
+	minY -= pad
+	maxX += pad
+	maxY += pad
+	if minX < b.Min.X {
+		minX = b.Min.X
+	}
+	if minY < b.Min.Y {
+		minY = b.Min.Y
+	}
+	if maxX >= b.Max.X {
+		maxX = b.Max.X - 1
+	}
+	if maxY >= b.Max.Y {
+		maxY = b.Max.Y - 1
+	}
+	w, h := maxX-minX+1, maxY-minY+1
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
+	draw.Draw(out, out.Bounds(), src, image.Pt(minX, minY), draw.Src)
+	return out
+}
+
+func letterboxMapCanvasSquare(src *image.RGBA, sky color.RGBA, side int) *image.RGBA {
+	if side < 1 {
+		return src
+	}
+	b := src.Bounds()
+	if b.Dx() == side && b.Dy() == side && b.Min.X == 0 && b.Min.Y == 0 {
+		return src
+	}
+	out := image.NewRGBA(image.Rect(0, 0, side, side))
+	draw.Draw(out, out.Bounds(), &image.Uniform{C: sky}, image.Point{}, draw.Src)
+	dx, dy := b.Dx(), b.Dy()
+	ox := (side - dx) / 2
+	oy := (side - dy) / 2
+	draw.Draw(out, image.Rect(ox, oy, ox+dx, oy+dy), src, b.Min, draw.Src)
+	return out
+}
+
 func renderMapTiles(city *citycore.City, atlas *Atlas, paint tilePainter) ([]byte, error) {
-	img := image.NewRGBA(image.Rect(0, 0, mapWidth, mapHeight))
+	img, sky, err := renderMapTilesImage(city, atlas, paint)
+	if err != nil {
+		return nil, err
+	}
+	img = fitMapPNGCanvas(img, sky)
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func renderMapTilesImage(city *citycore.City, atlas *Atlas, paint tilePainter) (*image.RGBA, color.RGBA, error) {
+	img := newMapWorkingImage(plateIslandOrigin(city.Pop.Int()), plateIslandExtent(city.Pop.Int()))
 	ctx := newMapRenderCtx(city, atlas)
-	draw.Draw(img, img.Bounds(), &image.Uniform{C: mapCanvasColor(ctx.peon)}, image.Point{}, draw.Src)
+	sky := mapCanvasColor(true)
+	draw.Draw(img, img.Bounds(), &image.Uniform{C: sky}, image.Point{}, draw.Src)
 
 	drawMapFloor(img, ctx)
 
@@ -116,12 +266,7 @@ func renderMapTiles(city *citycore.City, atlas *Atlas, paint tilePainter) ([]byt
 
 	objs := collectMapObjects(ctx)
 	paintMapObjects(img, ctx, objs, paint)
-
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return img, sky, nil
 }
 
 func drawIsoDiamond(img *image.RGBA, topX, topY int, c color.RGBA, edgeOverlap int) {

@@ -4,12 +4,27 @@ import (
 	"github.com/interestic/bitown/internal/citycore"
 )
 
+// squareMiniPops mirrors Game.hx genSquare: scatter square density across
+// four mini-squares with the same keyed RNG as fillLotsFromDensity.
+func squareMiniPops(slug string, sx, sy, sqPop int) [4]int {
+	var rep [4]int
+	if sqPop <= 0 {
+		return rep
+	}
+	rng := newMapRNGKeyed(slug, uint32(sx*131+sy*17+1)) //#nosec G115 -- square index
+	for i := 0; i < sqPop; i++ {
+		rep[rng.Intn(4)]++
+	}
+	return rep
+}
+
 // fillLotsFromDensity places buildings using Game.hx genSquare / genMiniSquare
-// rules on the displaySide×displaySide density field.
+// rules on the displaySide×displaySide density field. Parks and farm cover are
+// applied afterward so trees stay off farm (Game.hx farm XOR forest).
 //
-// peonClip: when true (no arterials), only cells inside the peon dalle field
-// (Game.hx displaySide–sized, capped to the PNG crop) are eligible.
-func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, peonClip bool, parkN int) {
+// Only cells inside the live plate island (Game.hx viewport, capped to the PNG
+// field) are eligible — arterial and roadless share the same island.
+func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, roadless bool) {
 	idxOf := make(map[[2]int]int, len(inner))
 	for i, lot := range inner {
 		idxOf[[2]int{lot.x, lot.y}] = i
@@ -18,7 +33,7 @@ func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, 
 
 	pop := city.Pop.Int()
 	active := activeSquareSide(pop)
-	origin := (displaySide - active) / 2
+	origin := activeSquareOrigin(pop)
 	slug := city.Slug.String()
 
 	for sy := origin; sy < origin+active; sy++ {
@@ -26,20 +41,17 @@ func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, 
 			sqPop := dens.at(sx, sy)
 			baseX := sx * squareSide
 			baseY := sy * squareSide
-			sqRNG := newMapRNGKeyed(slug, uint32(sx*131+sy*17+1)) //#nosec G115
 
 			if sqPop <= 0 {
 				continue
 			}
 			if sqPop >= csPopHuge {
-				placeDensityLot(inner, idxOf, baseX, baseY, city, peonClip, pop, sqRNG, true)
+				sqRNG := newMapRNGKeyed(slug, uint32(sx*131+sy*17+1)) //#nosec G115 -- square index
+				placeDensityLot(inner, idxOf, baseX, baseY, city, roadless, pop, sqRNG, true)
 				continue
 			}
 
-			rep := [4]int{}
-			for i := 0; i < sqPop; i++ {
-				rep[sqRNG.Intn(4)]++
-			}
+			rep := squareMiniPops(slug, sx, sy, sqPop)
 			for i := 0; i < 4; i++ {
 				px := (i % 2) * 4
 				py := (i / 2) * 4
@@ -49,91 +61,40 @@ func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, 
 				if py > 1 {
 					py++
 				}
-				genMiniSquareLots(inner, idxOf, baseX+px, baseY+py, rep[i], city, peonClip, pop, slug, sx, sy, i)
+				genMiniSquareLots(inner, idxOf, baseX+px, baseY+py, rep[i], city, roadless, pop, slug, sx, sy, i)
 			}
 		}
 	}
+	// roadless keeps quadrant 2×2 feet (not one center anchor per plate, #116),
+	// inset into the mini diamond so they do not sit on seams (#118).
+}
 
-	if peonClip {
-		snapPeonOnePerPlate(inner, idxOf, pop)
-	}
-
+// placeDedicatedParks claims env/40 vacant grass lots (not farm cover) for trees.
+// Order matches the former fillLotsFromDensity trail: farthest empties first.
+func placeDedicatedParks(occ map[[2]int]lotCell, inner []lotCell, parkN, pop int) {
 	if parkN <= 0 {
 		return
 	}
-	empties := make([]int, 0, len(inner))
-	for i := range inner {
-		if inner[i].use != lotEmpty {
+	empties := make([][2]int, 0, len(inner))
+	for _, lot := range inner {
+		cur, ok := occ[[2]int{lot.x, lot.y}]
+		if !ok || cur.use != lotEmpty {
 			continue
 		}
-		if !peonGrassTopCell(pop, inner[i].x, inner[i].y) {
+		if !grassTopCell(pop, lot.x, lot.y) {
 			continue
 		}
-		empties = append(empties, i)
+		empties = append(empties, [2]int{lot.x, lot.y})
 	}
 	if parkN > len(empties) {
 		parkN = len(empties)
 	}
 	for k := 0; k < parkN; k++ {
-		i := empties[len(empties)-1-k]
-		inner[i].use = lotPark
-		inner[i].tag = TagTree
-	}
-}
-
-// snapPeonOnePerPlate keeps Caerphilly spacing: at most one building per mcDalle
-// plate, foot on the plate anchor (density still chose which plates are occupied).
-func snapPeonOnePerPlate(inner []lotCell, idxOf map[[2]int]int, pop int) {
-	type plateKey struct{ px, py int }
-	best := map[plateKey]int{} // plate → inner index of kept building
-	for i := range inner {
-		if inner[i].use != lotBuilding {
-			continue
-		}
-		if !inPeonIslandFor(pop, inner[i].x, inner[i].y) {
-			inner[i].use = lotEmpty
-			continue
-		}
-		px, py := peonPlateOfFor(pop, inner[i].x, inner[i].y)
-		key := plateKey{px, py}
-		prev, ok := best[key]
-		if !ok {
-			best[key] = i
-			continue
-		}
-		// Prefer the candidate closer to the plate anchor; then lower jitter.
-		ax, ay := peonPlateAnchorCellFor(pop, px, py)
-		dNew := (inner[i].x-ax)*(inner[i].x-ax) + (inner[i].y-ay)*(inner[i].y-ay)
-		dOld := (inner[prev].x-ax)*(inner[prev].x-ax) + (inner[prev].y-ay)*(inner[prev].y-ay)
-		if dNew < dOld || (dNew == dOld && inner[i].jitter < inner[prev].jitter) {
-			inner[prev].use = lotEmpty
-			best[key] = i
-		} else {
-			inner[i].use = lotEmpty
-		}
-	}
-	// Move survivors onto plate anchors so feet sit on green diamond tops.
-	for key, i := range best {
-		ax, ay := peonPlateAnchorCellFor(pop, key.px, key.py)
-		if inner[i].x == ax && inner[i].y == ay {
-			continue
-		}
-		dst, ok := idxOf[[2]int{ax, ay}]
-		if !ok {
-			continue
-		}
-		if dst == i {
-			continue
-		}
-		if inner[dst].use == lotBuilding {
-			continue
-		}
-		tag := inner[i].tag
-		dens := inner[i].density
-		inner[i].use = lotEmpty
-		inner[dst].use = lotBuilding
-		inner[dst].tag = tag
-		inner[dst].density = dens
+		pos := empties[len(empties)-1-k]
+		cur := occ[pos]
+		cur.use = lotPark
+		cur.tag = TagTree
+		occ[pos] = cur
 	}
 }
 
@@ -142,7 +103,7 @@ func genMiniSquareLots(
 	idxOf map[[2]int]int,
 	bx, by, sqPop int,
 	city *citycore.City,
-	peonClip bool,
+	roadless bool,
 	pop int,
 	slug string,
 	sx, sy, n int,
@@ -154,7 +115,7 @@ func genMiniSquareLots(
 		return
 	}
 	if sqPop >= csPopBig {
-		placeDensityLot(inner, idxOf, bx, by, city, peonClip, pop, rng, true)
+		placeDensityLot(inner, idxOf, bx, by, city, roadless, pop, rng, true)
 		return
 	}
 
@@ -167,12 +128,24 @@ func genMiniSquareLots(
 		if rep[i] <= 0 {
 			continue
 		}
-		nx := bx + (i%2)*2
-		ny := by + (i/2)*2
-		forceHut := sqPop < csPopPeon
+		nx, ny := miniHutFoot(bx, by, i, roadless)
+		forceHut := sqPop < densityHut
 		rich := rep[i] > csPopNormal
-		placeDensityLotAt(inner, idxOf, nx, ny, city, peonClip, pop, sub, forceHut, rich)
+		placeDensityLotAt(inner, idxOf, nx, ny, city, roadless, pop, sub, forceHut, rich)
 	}
+}
+
+// miniHutInset shifts Game.hx 2×2 hut feet one cell SE on roadless maps so they
+// sit inside the 4×4 mini diamond instead of on NW origin / plate seams (#118).
+// Arterial maps keep the Game.hx origin so towers stay clear of road facades.
+const miniHutInset = 1
+
+func miniHutFoot(bx, by, i int, roadless bool) (int, int) {
+	inset := 0
+	if roadless {
+		inset = miniHutInset
+	}
+	return bx + (i%2)*2 + inset, by + (i/2)*2 + inset
 }
 
 func placeDensityLot(
@@ -180,12 +153,12 @@ func placeDensityLot(
 	idxOf map[[2]int]int,
 	x, y int,
 	city *citycore.City,
-	peonClip bool,
+	roadless bool,
 	pop int,
 	rng *mapRNG,
 	rich bool,
 ) {
-	placeDensityLotAt(inner, idxOf, x, y, city, peonClip, pop, rng, false, rich)
+	placeDensityLotAt(inner, idxOf, x, y, city, roadless, pop, rng, false, rich)
 }
 
 func placeDensityLotAt(
@@ -193,13 +166,18 @@ func placeDensityLotAt(
 	idxOf map[[2]int]int,
 	x, y int,
 	city *citycore.City,
-	peonClip bool,
+	roadless bool,
 	pop int,
 	rng *mapRNG,
 	forceHut bool,
 	rich bool,
 ) {
-	if peonClip && !inPeonIslandFor(pop, x, y) {
+	if !inPlateIsland(pop, x, y) {
+		return
+	}
+	// Feet stay on plate grass tops (not soil rim). Center snap used to force
+	// this; without it, skip rim cells so sprites are not clipped off the ledge.
+	if roadless && !grassTopCell(pop, x, y) {
 		return
 	}
 	i, ok := idxOf[[2]int{x, y}]
@@ -222,7 +200,7 @@ func placeDensityLotAt(
 		alt := batTypeToTag(typ)
 		switch alt {
 		case TagTree:
-			if peonGrassTopCell(pop, x, y) {
+			if grassTopCell(pop, x, y) {
 				inner[i].use = lotPark
 				inner[i].tag = TagTree
 				return

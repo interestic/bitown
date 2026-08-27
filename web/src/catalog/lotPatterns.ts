@@ -164,7 +164,7 @@ export const LOT_PATTERNS: LotPattern[] = [
     description:
       "毎スクエアの下地になる盛り土芝生。抽出では 50 フレームが同一（ネスト装飾は乗っていない）。マップはいま 1/2/10/20 からランダムに 1 枚スタンプ。",
     original:
-      "Game.hx は addBat(x,y, size=5, type=0) が下地。mcDalle 直スタンプはコメントアウト済み。bitown は DefineSprite_707_mcDalle を 4×4 で敷く。",
+      "Game.hx は addBat(x,y, size=5, type=0) が下地。mcDalle 直スタンプはコメントアウト済み。bitown は DefineSprite_707_mcDalle を 1 スクエア 1 枚で敷く（初期タウン 6×6）。",
     clips: [{ base: "sprites/DefineSprite_707_mcDalle", frameId: "1" }],
   },
 ];
@@ -185,6 +185,140 @@ export const TREE_PLOT_CELLS: ReadonlyArray<readonly [number, number]> = [
   [3, 0],
   [0, 2],
   [2, 3],
+];
+
+/**
+ * SE feet of four 2×2 minis packing the visual 4×4 dalle top (NW/NE/SW/SE).
+ * Matches sandbox mapBaseStage=2 packing (API uses the same quadrant idea on 10×10).
+ */
+export const QUAD_FARM_CELLS: ReadonlyArray<readonly [number, number]> = [
+  [1, 1],
+  [3, 1],
+  [1, 3],
+  [3, 3],
+];
+
+/** Mini farm clips (API farmMiniKeys / Townzzy auth_champs_gfx). */
+export const QUAD_FARM_CLIPS: ReadonlyArray<{ base: string; frameId: string }> = [
+  { base: "sprites/DefineSprite_521", frameId: "1" },
+  { base: "sprites/DefineSprite_521", frameId: "2" },
+  { base: "sprites/DefineSprite_521", frameId: "3" },
+  { base: "sprites/DefineSprite_521", frameId: "4" },
+];
+
+/** Front (SE) mini index in QUAD_FARM_CELLS / NW·NE·SW·SE order. */
+export const QUAD_FRONT_MINI = 3;
+/** Right (NE) mini — viewer’s east tip. */
+export const QUAD_RIGHT_MINI = 1;
+/** Left (SW) mini — viewer’s west tip. */
+export const QUAD_LEFT_MINI = 2;
+/** Top (NW) mini — viewer’s north tip. */
+export const QUAD_TOP_MINI = 0;
+
+/**
+ * SE 2×2 cells packing four hut feet on the visual 4×4 dalle
+ * (sandbox mapBaseStage=3 / roadless miniHutFoot inset idea).
+ */
+export const FRONT_HUT_CELLS: ReadonlyArray<readonly [number, number]> = [
+  [2, 2],
+  [3, 2],
+  [2, 3],
+  [3, 3],
+];
+
+/** NE 2×2 hut feet (right quadrant on the visual 4×4 dalle). */
+export const RIGHT_HUT_CELLS: ReadonlyArray<readonly [number, number]> = [
+  [2, 0],
+  [3, 0],
+  [2, 1],
+  [3, 1],
+];
+
+/** SW 2×2 hut feet (left quadrant on the visual 4×4 dalle). */
+export const LEFT_HUT_CELLS: ReadonlyArray<readonly [number, number]> = [
+  [0, 2],
+  [1, 2],
+  [0, 3],
+  [1, 3],
+];
+
+/** NW 2×2 hut feet (top quadrant on the visual 4×4 dalle). */
+export const TOP_HUT_CELLS: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [1, 0],
+  [0, 1],
+  [1, 1],
+];
+
+/**
+ * Screen-space +X for left (SW) mini stamps — matches API westMiniStampNudgeX.
+ * Confirmed on sandbox: peon yards fit on the plate west tip.
+ */
+export const WEST_MINI_STAMP_NUDGE_X = 10;
+
+/**
+ * Screen-space nudge for top (NW) mini stamps — matches API
+ * northMiniStampNudgeX / northMiniStampNudgeY (sandbox map-base #15).
+ */
+export const NORTH_MINI_STAMP_NUDGE_X = 3;
+export const NORTH_MINI_STAMP_NUDGE_Y = 10;
+
+/**
+ * Screen-space +Y for SE-packed huts. Matches API seMiniStampNudgeY.
+ */
+export const SE_MINI_STAMP_NUDGE_Y = 3;
+
+/**
+ * Screen-space +Y for SW/NE (left/right) packed huts. Matches API ewMiniStampNudgeY.
+ */
+export const EW_MINI_STAMP_NUDGE_Y = 5;
+
+/**
+ * Screen-space X for NE (right) packed huts (negative = left). Matches API
+ * eastMiniStampNudgeX.
+ */
+export const EAST_MINI_STAMP_NUDGE_X = -1;
+/**
+ * Screen-space Y for CROSS stamps only (negative = up). Arterials stay at SE foot.
+ * Matches API crossStampNudgeY / squareCrossFoot.
+ */
+export const CROSS_STAMP_NUDGE_Y = -13;
+
+/**
+ * Square-local cell for CROSS foot (SE tip is 9). Matches API crossStampFootLocal.
+ * From SE, Δcell (−2,−2) → screen Δy = −2 × ISO_TILE_H before CROSS_STAMP_NUDGE_Y.
+ */
+export const CROSS_STAMP_FOOT_LOCAL = 7;
+export const CROSS_STAMP_SE_LOCAL = 9;
+
+/** Small residential clips used on sandbox hut minis (mcHouse1 peon-scale). */
+export const FRONT_HUT_CLIPS: ReadonlyArray<{ base: string; frameId: string }> = [
+  { base: "sprites/DefineSprite_382", frameId: "3" },
+  { base: "sprites/DefineSprite_374", frameId: "3" },
+  { base: "sprites/DefineSprite_374", frameId: "5" },
+  { base: "sprites/DefineSprite_382", frameId: "1" },
+];
+
+/** Alternate peon houses used on left mini (sandbox stage 7 / less spill). */
+export const LEFT_HUT_CLIPS: ReadonlyArray<{ base: string; frameId: string }> = [
+  { base: "sprites/DefineSprite_381", frameId: "1" },
+  { base: "sprites/DefineSprite_200", frameId: "1" },
+  { base: "sprites/DefineSprite_200", frameId: "2" },
+  { base: "sprites/DefineSprite_200", frameId: "3" },
+];
+
+/** Top (NW) mini uses the same cleaner peon set as left (sandbox stage 8). */
+export const TOP_HUT_CLIPS = LEFT_HUT_CLIPS;
+
+/**
+ * Full-plate visual-check set (sandbox trial): classic 269 + 295 peons —
+ * not the 381/200 or 382/374 sets used in earlier stages.
+ */
+export const TRIAL_HUT_CLIPS: ReadonlyArray<{ base: string; frameId: string }> = [
+  { base: "sprites/DefineSprite_269", frameId: "1" },
+  { base: "sprites/DefineSprite_269", frameId: "2" },
+  { base: "sprites/DefineSprite_269", frameId: "3" },
+  { base: "sprites/DefineSprite_295", frameId: "1" },
 ];
 
 export const LOT_PATTERN_IDS = LOT_PATTERNS.map((p) => p.id);

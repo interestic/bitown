@@ -364,3 +364,72 @@ body {
 .hint {
   color: var(--muted);
 }
+
+.map-base__stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 40px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.map-base__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.map-base__legend li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 36rem;
+}
+
+.map-base__swatch {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border-radius: 3px;
+  border: 1px solid #a8a29e;
+}
+
+.map-base__swatch--grass {
+  background: #8fbf4a;
+}
+
+.map-base__swatch--soil {
+  background: #8b5a2b;
+}
+
+.map-base__swatch--foot {
+  background: var(--anchor);
+  border-radius: 50%;
+}
+
+.map-base__contract {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.map-base__contract dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.map-base__contract dd {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}

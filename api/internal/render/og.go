@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"image/png"
 
 	"github.com/interestic/bitown/internal/citycore"
+	xdraw "golang.org/x/image/draw"
 )
 
 const (
-	ogRendererVersion = "og-v1"
+	ogRendererVersion = "og-v2"
 	OGWidth           = 1200
 	OGHeight          = 630
 )
@@ -46,7 +46,7 @@ func BuildCityOGPNG(city *citycore.City) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode map png: %w", err)
 	}
-	frame := letterboxNearest(src, OGWidth, OGHeight, ogBackdrop)
+	frame := letterboxScale(src, OGWidth, OGHeight, ogBackdrop)
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, frame); err != nil {
 		return nil, err
@@ -54,9 +54,11 @@ func BuildCityOGPNG(city *citycore.City) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func letterboxNearest(src image.Image, dw, dh int, bg color.Color) *image.RGBA {
+// letterboxScale fits src into dw×dh with a solid backdrop, using
+// Catmull-Rom resampling for the scaled map.
+func letterboxScale(src image.Image, dw, dh int, bg color.Color) *image.RGBA {
 	dst := image.NewRGBA(image.Rect(0, 0, dw, dh))
-	draw.Draw(dst, dst.Bounds(), &image.Uniform{C: bg}, image.Point{}, draw.Src)
+	xdraw.Draw(dst, dst.Bounds(), &image.Uniform{C: bg}, image.Point{}, xdraw.Src)
 
 	sb := src.Bounds()
 	sw, sh := sb.Dx(), sb.Dy()
@@ -81,12 +83,8 @@ func letterboxNearest(src image.Image, dw, dh int, bg color.Color) *image.RGBA {
 	ox := (dw - nw) / 2
 	oy := (dh - nh) / 2
 
-	for y := 0; y < nh; y++ {
-		sy := sb.Min.Y + y*sh/nh
-		for x := 0; x < nw; x++ {
-			sx := sb.Min.X + x*sw/nw
-			dst.Set(ox+x, oy+y, src.At(sx, sy))
-		}
-	}
+	scaled := image.NewRGBA(image.Rect(0, 0, nw, nh))
+	xdraw.CatmullRom.Scale(scaled, scaled.Bounds(), src, sb, xdraw.Over, nil)
+	xdraw.Draw(dst, image.Rect(ox, oy, ox+nw, oy+nh), scaled, image.Point{}, xdraw.Over)
 	return dst
 }

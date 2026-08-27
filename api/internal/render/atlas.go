@@ -63,7 +63,7 @@ const (
 	TagRoad     = "road"
 	TagTree     = "tree"
 	TagWater    = "water"
-	// TagGround is stamped one mcDalle per square (peon / Townzzy 6×6 field).
+	// TagGround is stamped one mcDalle per square (roadless / Townzzy 6×6 field).
 	TagGround = "ground"
 	// TagPark is catalogued but intentionally unused in M1 (count may be 0).
 	// Park lots are drawn with TagTree sprites instead.
@@ -218,7 +218,7 @@ func loadAtlasFromRoot(base string, root *os.Root, revision string) (*Atlas, err
 	}, nil
 }
 
-// atlasImageRGBA makes masked blits (roads, peon grass) use RGBAAt. PNG decode
+// atlasImageRGBA makes masked blits (roads, roadless grass) use RGBAAt. PNG decode
 // often yields NRGBA, and drawFrameMasked used to fall back to an unclipped blit.
 func atlasImageRGBA(img image.Image) *image.RGBA {
 	if rgba, ok := img.(*image.RGBA); ok {
@@ -368,13 +368,26 @@ func (a *Atlas) pickKeyFromBases(bases []string, tag string, seed uint32) string
 	idx := seed % uint32(len(bases)) //#nosec G115 -- catalog length is bounded
 	base := bases[idx]
 	if _, building := mapBuildingTags[tag]; building {
-		return base + "_v00.png"
+		return buildingFrameColorKey(a, base, seed)
 	}
 	key := a.frameKey(base, a.VariantSuffix(seed))
 	if _, ok := a.Frames[key]; ok {
 		return key
 	}
 	return base + "_v00.png"
+}
+
+// buildingFrameColorKey appends _v00.._v03 from seed high bits (sandbox map-base
+// color contract). Falls back to _v00 when the colored frame is missing.
+func buildingFrameColorKey(a *Atlas, frameBase string, seed uint32) string {
+	color := int((seed >> 16) % 4) //#nosec G115
+	key := fmt.Sprintf("%s_v%02d.png", frameBase, color)
+	if a != nil {
+		if _, ok := a.Frames[key]; ok {
+			return key
+		}
+	}
+	return frameBase + "_v00.png"
 }
 
 // PickBuildingKeyForTag picks a building frame for a zone tag.
