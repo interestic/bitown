@@ -420,7 +420,7 @@ export function buildGenSquareRoadLayers(
             crossFrame,
             dx + crossBase.x + crossOx,
             dy + crossBase.y + crossOy,
-            2,
+            1,
             {
               clipWorldPolygon: expandedDalleTopWorld(dalle, dx, dy, 0.12),
             },

@@ -234,14 +234,8 @@ func TestBuildCityMapPNG_TreesStayOffDalleSoil(t *testing.T) {
 	}
 	for _, tc := range cases {
 		city := &citycore.City{Slug: "testcity", Pop: citycore.SectorValue(tc.pop), Env: citycore.SectorValue(tc.env), Ind: 1, Com: 1, Sec: 1}
-		data, err := BuildCityMapPNG(city)
-		if err != nil {
-			t.Fatalf("pop=%d render: %v", tc.pop, err)
-		}
-		img, ok := decodeMapPNG(t, data).(*image.RGBA)
-		if !ok {
-			t.Fatal("expected RGBA map")
-		}
+		// Pre-fit working canvas shares isoCell / grass-mask coordinates.
+		img := mustBuildMapWorkingImage(t, city)
 		grass := buildPlateGrass(tc.pop)
 		b := img.Bounds()
 		for y := b.Min.Y; y < b.Max.Y; y++ {
