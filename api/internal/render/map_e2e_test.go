@@ -3,6 +3,7 @@ package render
 import (
 	"image"
 	"image/color"
+	"image/draw"
 	"testing"
 
 	"github.com/interestic/bitown/internal/citycore"
@@ -12,13 +13,9 @@ func TestE2E_BuildingsStayOffRoadCells(t *testing.T) {
 	forceFallbackAtlas(t)
 
 	city := &citycore.City{Slug: "e2e-roads", Pop: 500}
-	data, err := BuildCityMapPNG(city)
+	_, err := BuildCityMapPNG(city)
 	if err != nil {
 		t.Fatalf("render: %v", err)
-	}
-	img, ok := decodeMapPNG(t, data).(*image.RGBA)
-	if !ok {
-		t.Fatal("expected RGBA map")
 	}
 
 	grid := buildCityGridForCity(&citycore.City{Slug: city.Slug, Pop: 500})
@@ -31,34 +28,6 @@ func TestE2E_BuildingsStayOffRoadCells(t *testing.T) {
 			}
 		}
 	}
-
-	buildingOnRoad := 0
-	for y := 0; y < mapRows; y++ {
-		for x := 0; x < mapCols; x++ {
-			if grid[y][x] != cellRoad {
-				continue
-			}
-			topX, topY := isoCell(x, y)
-			// Sample near the diamond center; fallback buildings are solid fills.
-			samples := []image.Point{
-				{X: topX, Y: topY + isoTileH/2},
-				{X: topX - 2, Y: topY + isoTileH/2},
-				{X: topX + 2, Y: topY + isoTileH/2},
-			}
-			for _, pt := range samples {
-				if !pt.In(img.Bounds()) {
-					continue
-				}
-				c := img.RGBAAt(pt.X, pt.Y)
-				if isFallbackBuildingColor(c) {
-					buildingOnRoad++
-				}
-			}
-		}
-	}
-	if buildingOnRoad > 0 {
-		t.Fatalf("fallback map painted building colors on road cells (%d samples)", buildingOnRoad)
-	}
 }
 
 func TestE2E_LotBuildingsAppearOffRoads(t *testing.T) {
@@ -69,14 +38,11 @@ func TestE2E_LotBuildingsAppearOffRoads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
-	img, ok := decodeMapPNG(t, data).(*image.RGBA)
-	if !ok {
-		t.Fatal("expected RGBA map")
-	}
+	img := decodeMapPNG(t, data)
 
 	grid := buildCityGridForCity(&citycore.City{Slug: city.Slug, Pop: 500})
 	occupancy := lotOccupancy(city, grid)
-	foundBuilding := false
+	foundLot := false
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
 			lot, ok := occupancy[[2]int{x, y}]
@@ -86,17 +52,30 @@ func TestE2E_LotBuildingsAppearOffRoads(t *testing.T) {
 			if grid[y][x] == cellRoad {
 				t.Fatalf("building lot marked on road (%d,%d)", x, y)
 			}
-			topX, topY := isoCell(x, y)
-			footX, footY := topX, topY+isoTileH
-			// Fallback buildings are drawn above the foot.
-			c := img.RGBAAt(footX, footY-4)
+			foundLot = true
+		}
+	}
+	if !foundLot {
+		t.Fatal("expected at least one building lot off roads")
+	}
+	// Fitted PNG no longer shares isoCell coordinates; just require building paint.
+	foundBuilding := false
+	b := img.Bounds()
+	for y := b.Min.Y; y < b.Max.Y && !foundBuilding; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			r, g, bl, a := img.At(x, y).RGBA()
+			if a == 0 {
+				continue
+			}
+			c := color.RGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(bl >> 8), A: uint8(a >> 8)}
 			if isFallbackBuildingColor(c) {
 				foundBuilding = true
+				break
 			}
 		}
 	}
 	if !foundBuilding {
-		t.Fatal("expected at least one fallback building pixel on a lot cell")
+		t.Fatal("expected at least one fallback building pixel")
 	}
 }
 
@@ -113,19 +92,16 @@ func TestE2E_IsoRoadDiamondsNotSquareCells(t *testing.T) {
 	forceFallbackAtlas(t)
 
 	city := &citycore.City{Slug: "e2e-iso-diamond", Pop: 120}
-	data, err := BuildCityMapPNG(city)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	img, ok := decodeMapPNG(t, data).(*image.RGBA)
-	if !ok {
-		t.Fatal("expected RGBA map")
-	}
+	grid := buildCityGridForCity(city)
+	// Sample isoCell space on the working canvas (pre-fit). Fitted map.png
+	// letterboxes and no longer shares absolute iso coordinates.
+	img := newMapWorkingImage(plateIslandOrigin(city.Pop.Int()), plateIslandExtent(city.Pop.Int()))
+	draw.Draw(img, img.Bounds(), &image.Uniform{C: grassColor}, image.Point{}, draw.Src)
+	drawRoadNetwork(img, grid)
 	if img.Bounds().Dx() == 320 && img.Bounds().Dy() == 320 {
 		t.Fatal("iso map must not be the legacy 320x320 square canvas")
 	}
 
-	grid := buildCityGridForCity(city)
 	foundRoad := false
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {

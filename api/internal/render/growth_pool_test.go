@@ -31,11 +31,11 @@ func TestMaxTierForPop(t *testing.T) {
 // maxTierForLotWithLocal without local density).
 func maxTierForLotTag(pop, x, y int, tag string) int {
 	max := maxTierForPop(pop)
-	cx, cy := mapCols/2, mapRows/2
+	cx, cy := plateIslandCenter(pop)
 	dx, dy := x-cx, y-cy
 	dist2 := dx*dx + dy*dy
-	outer := outerLotDist2()
-	if tag == TagResidential && pop < popTierHuge {
+	outer := outerLotDist2ForPop(pop)
+	if tag == TagResidential && pop < cityHugePop {
 		outer = outer / 2
 		if outer < 1 {
 			outer = 1
@@ -51,16 +51,17 @@ func maxTierForLotTag(pop, x, y int, tag string) int {
 }
 
 func TestMaxTierForLot(t *testing.T) {
-	cx, cy := mapCols/2, mapRows/2
-	outer := outerLotDist2()
+	cx, cy := plateIslandCenter(500)
+	outer := outerLotDist2ForPop(500)
 	// Near-outer: just past outer threshold.
 	near := 0
-	for d := 1; d < mapCols; d++ {
+	for d := 1; d < plateIslandExtent(500); d++ {
 		if d*d > outer {
 			near = d
 			break
 		}
 	}
+	cx20, cy20 := plateIslandCenter(20)
 	cases := []struct {
 		name string
 		pop  int
@@ -69,9 +70,9 @@ func TestMaxTierForLot(t *testing.T) {
 	}{
 		{"center huge", 500, cx, cy, 3},
 		{"near-outer huge drops one", 500, cx, cy - near, 2},
-		{"far huge caps at 1", 500, 0, 0, 1},
-		{"corner peon empty pool tier", 20, 0, 0, 0}, // peon 1 → outer 0
-		{"center peon", 20, cx, cy, 1},
+		{"far huge caps at 1", 500, plateIslandOrigin(500), plateIslandOrigin(500), 1},
+		{"corner roadless empty pool tier", 20, plateIslandOrigin(20), plateIslandOrigin(20), 0}, // roadless 1 → outer 0
+		{"center roadless", 20, cx20, cy20, 1},
 	}
 	for _, tc := range cases {
 		if got := maxTierForLotTag(tc.pop, tc.x, tc.y, ""); got != tc.want {
@@ -111,19 +112,22 @@ func TestOuterLotsAtBigThresholdOmitTier3(t *testing.T) {
 		t.Fatal(err)
 	}
 	city := &citycore.City{Slug: "testcity", Pop: 120, Ind: 5, Com: 3, Env: 80}
-	cx, cy := mapCols/2, mapRows/2
-	var outer, outerTier3 int
-	for y := 0; y < mapRows; y++ {
-		for x := 0; x < mapCols; x++ {
+	cx, cy := plateIslandCenter(city.Pop.Int())
+	outer := outerLotDist2ForPop(city.Pop.Int())
+	var outerN, outerTier3 int
+	o := plateIslandOrigin(city.Pop.Int())
+	e := plateIslandExtent(city.Pop.Int())
+	for y := o; y < o+e; y++ {
+		for x := o; x < o+e; x++ {
 			dx, dy := x-cx, y-cy
-			if dx*dx+dy*dy <= outerLotDist2() {
+			if dx*dx+dy*dy <= outer {
 				continue
 			}
 			key := atlas.PickBuildingKeyForLot(city, zoneTag(city, x, y), x, y, hashCell(city.Slug.String(), x, y))
 			if key == "" {
 				continue
 			}
-			outer++
+			outerN++
 			parts := strings.Split(key, "/")
 			folder := parts[0] + "/" + parts[1]
 			if atlas.folderTier(folder) >= 3 {
@@ -131,11 +135,11 @@ func TestOuterLotsAtBigThresholdOmitTier3(t *testing.T) {
 			}
 		}
 	}
-	if outer == 0 {
+	if outerN == 0 {
 		t.Fatal("expected outer-lot picks")
 	}
 	if outerTier3 != 0 {
-		t.Fatalf("pop=120 outer lots must not place tier 3, got %d/%d", outerTier3, outer)
+		t.Fatalf("pop=120 outer lots must not place tier 3, got %d/%d", outerTier3, outerN)
 	}
 }
 
@@ -146,12 +150,15 @@ func TestCenterLotsAtBigThresholdCanPlaceTier3(t *testing.T) {
 		t.Fatal(err)
 	}
 	city := &citycore.City{Slug: "testcity", Pop: 400, Ind: 50, Com: 50, Env: 80}
-	cx, cy := mapCols/2, mapRows/2
+	cx, cy := plateIslandCenter(city.Pop.Int())
+	outer := outerLotDist2ForPop(city.Pop.Int())
 	var center, centerTier3 int
-	for y := 0; y < mapRows; y++ {
-		for x := 0; x < mapCols; x++ {
+	o := plateIslandOrigin(city.Pop.Int())
+	e := plateIslandExtent(city.Pop.Int())
+	for y := o; y < o+e; y++ {
+		for x := o; x < o+e; x++ {
 			dx, dy := x-cx, y-cy
-			if dx*dx+dy*dy > outerLotDist2() {
+			if dx*dx+dy*dy > outer {
 				continue
 			}
 			key := atlas.PickBuildingKeyForLot(city, zoneTag(city, x, y), x, y, hashCell(city.Slug.String(), x, y))
@@ -318,7 +325,7 @@ func TestPickBuildingKeyForLotHighPopCanUseHighTiers(t *testing.T) {
 	}
 
 	city := &citycore.City{Slug: "growth-high", Pop: 500, Ind: 50, Com: 50, Sec: 300, Env: 400}
-	cx, cy := mapCols/2, mapRows/2
+	cx, cy := plateIslandCenter(city.Pop.Int())
 	var highTier, landmarks, samples int
 	for seed := uint32(0); seed < 256; seed++ {
 		key := atlas.PickBuildingKeyForLot(city, TagResidential, cx, cy, seed)
@@ -348,7 +355,7 @@ func TestPickBuildingKeyForLotHighPopCanUseHighTiers(t *testing.T) {
 }
 
 func TestPickBuildingKeyForLotEmptyWithinTier(t *testing.T) {
-	// Synthetic atlas: only tier-2 residential — peon outer lots (max tier 0) must
+	// Synthetic atlas: only tier-2 residential — roadless outer lots (max tier 0) must
 	// return empty so callers draw a rectangle, not bypass via PickBuildingKeyForTag.
 	atlas := &Atlas{
 		BasesByTag: map[string][]string{
@@ -361,8 +368,8 @@ func TestPickBuildingKeyForLotEmptyWithinTier(t *testing.T) {
 			"sprites/House_tall/1_v00.png": {W: 16, H: 24},
 		},
 	}
-	city := &citycore.City{Slug: "peon-empty", Pop: 20}
-	// Corner lot: maxTierForLotTag drops peon cap 1 → 0.
+	city := &citycore.City{Slug: "roadless-empty", Pop: 20}
+	// Corner lot: maxTierForLotTag drops roadless cap 1 → 0.
 	key := atlas.PickBuildingKeyForLot(city, TagResidential, 0, 0, 1)
 	if key != "" {
 		t.Fatalf("expected empty key when no frames within tier cap, got %q", key)
@@ -395,8 +402,10 @@ func TestPickBuildingKeyForLotKeepsZoneTags(t *testing.T) {
 	}
 	city := &citycore.City{Slug: "growth-zone", Pop: 300, Ind: 50, Com: 10}
 
-	comKey := atlas.PickBuildingKeyForLot(city, TagCommercial, mapCols/2, mapRows/2, 7)
-	indKey := atlas.PickBuildingKeyForLot(city, TagIndustrial, 0, 5, 7)
+	cx, cy := plateIslandCenter(city.Pop.Int())
+	o := plateIslandOrigin(city.Pop.Int())
+	comKey := atlas.PickBuildingKeyForLot(city, TagCommercial, cx, cy, 7)
+	indKey := atlas.PickBuildingKeyForLot(city, TagIndustrial, o, o+5, 7)
 	if comKey == "" || indKey == "" {
 		t.Fatalf("expected zone picks, com=%q ind=%q", comKey, indKey)
 	}
@@ -423,10 +432,11 @@ func TestTierPickWeightResidentialPrefersHousesAtBigPop(t *testing.T) {
 }
 
 func TestMaxTierForLotTagResidentialWiderHouseBelt(t *testing.T) {
-	cx, cy := mapCols/2, mapRows/2
-	outer := outerLotDist2()
+	const pop = 300
+	cx, cy := plateIslandCenter(pop)
+	outer := outerLotDist2ForPop(pop)
 	mid := 0
-	for d := 1; d < mapCols; d++ {
+	for d := 1; d < plateIslandExtent(pop); d++ {
 		if d*d > outer/2 && d*d <= outer {
 			mid = d
 			break
@@ -435,16 +445,18 @@ func TestMaxTierForLotTagResidentialWiderHouseBelt(t *testing.T) {
 	if mid == 0 {
 		t.Fatal("expected a mid-ring distance")
 	}
-	if got := maxTierForLotTag(300, cx, cy-mid, ""); got != 3 {
+	if got := maxTierForLotTag(pop, cx, cy-mid, ""); got != 3 {
 		t.Fatalf("generic mid-ring want 3, got %d", got)
 	}
-	if got := maxTierForLotTag(300, cx, cy-mid, TagResidential); got != 2 {
+	if got := maxTierForLotTag(pop, cx, cy-mid, TagResidential); got != 2 {
 		t.Fatalf("residential mid-ring want 2, got %d", got)
 	}
-	if got := maxTierForLotTag(300, 0, 0, TagResidential); got != 1 {
+	if got := maxTierForLotTag(pop, plateIslandOrigin(pop), plateIslandOrigin(pop), TagResidential); got != 1 {
 		t.Fatalf("residential corner want 1, got %d", got)
 	}
-	if got := maxTierForLotTag(500, 0, cy, TagIndustrial); got < 2 {
+	o500 := plateIslandOrigin(500)
+	_, cy500 := plateIslandCenter(500)
+	if got := maxTierForLotTag(500, o500, cy500, TagIndustrial); got < 2 {
 		t.Fatalf("industrial rim should keep warehouses, got %d", got)
 	}
 }

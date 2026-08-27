@@ -25,19 +25,22 @@ func (a *Atlas) drawFrameAtFoot(dst *image.RGBA, key string, footX, footY int) b
 	return true
 }
 
-// drawFrameOnPeonGrass paints a sprite but only where the pixel is supported by
+// drawFrameOnGrassTop paints a sprite but only where the pixel is supported by
 // the green diamond tops (column hits grass, and is not below the island).
-func (a *Atlas) drawFrameOnPeonGrass(dst *image.RGBA, key string, footX, footY int, grass peonGrass) bool {
+func (a *Atlas) drawFrameOnGrassTop(dst *image.RGBA, key string, footX, footY int, grass plateGrass) bool {
 	return a.drawFrameMasked(dst, key, footX, footY, func(px, py int) bool {
-		return peonPixelSupported(grass, px, py)
+		return grassTopPixelSupported(grass, px, py)
 	})
 }
 
 // drawRoadOnSquare paints one edge stamp clipped to that square's iso dalle
-// (catalog expandedDalleTopWorld) so unclipped 702 art cannot hang past the
-// north tip of the island.
-func (a *Atlas) drawRoadOnSquare(dst *image.RGBA, key string, footX, footY, sx, sy, dy int, expand float64) bool {
+// (catalog expandedDalleTopWorld) and to plate grass so arterial stamps cannot
+// hang past the city diamond onto the flat canvas.
+func (a *Atlas) drawRoadOnSquare(dst *image.RGBA, key string, footX, footY, sx, sy, dy int, expand float64, grass plateGrass) bool {
 	return a.drawFrameMasked(dst, key, footX, footY, func(px, py int) bool {
+		if !grassTopPixelSupported(grass, px, py) {
+			return false
+		}
 		return pointInIsoBlockOffset(px, py, sx*squareSide, sy*squareSide, squareSide, dy, expand)
 	})
 }

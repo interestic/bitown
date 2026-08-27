@@ -10,6 +10,7 @@ type lotUse int
 
 const (
 	lotEmpty lotUse = iota
+	lotFarm         // Game.hx farm cover; trees stay off (type 15 / mini type 2)
 	lotPark
 	lotBuilding
 )
@@ -43,13 +44,17 @@ func lotTouchesRoad(grid cityGrid, x, y int) bool {
 
 func lotOccupancyWithDensity(city *citycore.City, grid cityGrid, dens popDensity) map[[2]int]lotCell {
 	slug := city.Slug.String()
-	peonClip := !arterialsEnabled(city)
+	roadless := !arterialsEnabled(city)
 
 	lots := make([]lotCell, 0, mapCols*mapRows)
-	cx, cy := mapCols/2, mapRows/2
+	pop := city.Pop.Int()
+	cx, cy := plateIslandCenter(pop)
 	for y := 0; y < mapRows; y++ {
 		for x := 0; x < mapCols; x++ {
 			if grid[y][x] != cellLot {
+				continue
+			}
+			if !inPlateIsland(pop, x, y) {
 				continue
 			}
 			dx, dy := x-cx, y-cy
@@ -85,28 +90,66 @@ func lotOccupancyWithDensity(city *citycore.City, grid cityGrid, dens popDensity
 		parkN = len(inner) / 3
 	}
 
-	fillLotsFromDensity(inner, city, dens, peonClip, parkN)
+	// Buildings first, then farm cover (Game.hx farm XOR forest), then parks
+	// and env scatter on leftover vacant grass — never on farm cells.
+	fillLotsFromDensity(inner, city, dens, roadless)
 
-	pop := city.Pop.Int()
 	out := make(map[[2]int]lotCell, len(lots))
 	for _, lot := range inner {
-		scatterTreeOnEmpty(&lot, city.Env.Int(), false, pop)
 		out[[2]int{lot.x, lot.y}] = lot
 	}
 	for _, lot := range curb {
 		lot.use = lotEmpty
-		scatterTreeOnEmpty(&lot, city.Env.Int(), true, pop)
 		out[[2]int{lot.x, lot.y}] = lot
 	}
+	markFarmLots(out, city.Slug.String(), pop, dens, grid, roadless)
+	expandFarmMargins(out)
+	placeDedicatedParks(out, inner, parkN, pop)
+	for pos, lot := range out {
+		scatterTreeOnEmpty(&lot, city.Env.Int(), lotTouchesRoad(grid, lot.x, lot.y), pop)
+		out[pos] = lot
+	}
 	clearParksOffGrass(out, pop)
+	// One-hop farm margins still leave empties cardinal-adjacent to expanded
+	// farm rings; parks there paint tree canopies onto farm (#113).
+	clearParksNearFarms(out)
 	return out
+}
+
+// clearParksNearFarms drops parks that touch lotFarm (chebyshev ≤ 1) so tree
+// sprites are not drawn on top of farm after farm stamps.
+func clearParksNearFarms(occ map[[2]int]lotCell) {
+	for pos, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		touch := false
+		for dy := -1; dy <= 1 && !touch; dy++ {
+			for dx := -1; dx <= 1; dx++ {
+				if dx == 0 && dy == 0 {
+					continue
+				}
+				n, ok := occ[[2]int{pos[0] + dx, pos[1] + dy}]
+				if ok && n.use == lotFarm {
+					touch = true
+					break
+				}
+			}
+		}
+		if !touch {
+			continue
+		}
+		lot.use = lotEmpty
+		lot.tag = ""
+		occ[pos] = lot
+	}
 }
 
 func scatterTreeOnEmpty(lot *lotCell, env int, curb bool, pop int) {
 	if lot.use != lotEmpty || env <= 0 {
 		return
 	}
-	if !peonGrassTopCell(pop, lot.x, lot.y) {
+	if !grassTopCell(pop, lot.x, lot.y) {
 		return
 	}
 	chance := env / 2
@@ -122,14 +165,14 @@ func scatterTreeOnEmpty(lot *lotCell, env int, curb bool, pop int) {
 	}
 }
 
-// clearParksOffGrass is a safety net for parks that still land on the dalle
+// clearParksOffGrass is a safety net for parks that still land on the plate
 // soil rim after placement filters (density TagTree / parkN).
 func clearParksOffGrass(occ map[[2]int]lotCell, pop int) {
 	for pos, lot := range occ {
 		if lot.use != lotPark {
 			continue
 		}
-		if peonGrassTopCell(pop, lot.x, lot.y) {
+		if grassTopCell(pop, lot.x, lot.y) {
 			continue
 		}
 		lot.use = lotEmpty
@@ -139,18 +182,30 @@ func clearParksOffGrass(occ map[[2]int]lotCell, pop int) {
 }
 
 func zoneTag(city *citycore.City, x, y int) string {
-	cx, cy := mapCols/2, mapRows/2
+	pop := 0
+	if city != nil {
+		pop = city.Pop.Int()
+	}
+	o := plateIslandOrigin(pop)
+	e := plateIslandExtent(pop)
+	if e < 1 {
+		e = squareSide
+	}
+	cx, cy := o+e/2, o+e/2
 	dx, dy := x-cx, y-cy
 	dist := dx*dx + dy*dy
-	comR2 := (mapCols * mapCols) / 33
-	if dist <= comR2 && city.Com > 0 {
+	comR2 := (e * e) / 33
+	if dist <= comR2 && city != nil && city.Com > 0 {
 		return TagCommercial
 	}
-	rim := mapCols / 10
-	if rim < 2 {
-		rim = 2
+	// Outer third of the live island (not the sparse e/10 fringe): with a full
+	// Game.hx viewport the true edge is density=0, so warehouses must sit on the
+	// populated outer belt.
+	band := e / 3
+	if band < 2 {
+		band = 2
 	}
-	if (x < rim || x >= mapCols-rim || y < rim || y >= mapRows-rim) && city.Ind > 0 {
+	if (x < o+band || x >= o+e-band || y < o+band || y >= o+e-band) && city != nil && city.Ind > 0 {
 		return TagIndustrial
 	}
 	return TagResidential

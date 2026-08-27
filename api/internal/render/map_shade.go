@@ -13,7 +13,7 @@ func groundShadeEnabled() bool {
 }
 
 // groundShadeIdentity is appended to the map ETag hash when shade is on.
-// Empty when off so default map-v24 tags stay byte-identical.
+// Empty when off so default mapRendererVersion tags stay byte-identical.
 func groundShadeIdentity() string {
 	if groundShadeEnabled() {
 		return groundShadeVariant

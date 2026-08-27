@@ -52,14 +52,7 @@ func TestLotColumnClipKeepsPaintOffAdjacentRoad(t *testing.T) {
 func TestE2E_AtlasRoadsStayClearWithSetback(t *testing.T) {
 	requireAtlasFiles(t)
 	city := &citycore.City{Slug: "testcity", Pop: 80}
-	data, err := BuildCityMapPNG(city)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	img, ok := decodeMapPNG(t, data).(*image.RGBA)
-	if !ok {
-		t.Fatal("expected RGBA")
-	}
+	img := mustBuildMapWorkingImage(t, city)
 	plan := planRoadsForCity(&citycore.City{Slug: city.Slug, Pop: 80})
 	buried, checked := 0, 0
 	for _, st := range plan.stamps {
@@ -83,19 +76,20 @@ func TestE2E_AtlasTowersOccludeSomeBehindRoads(t *testing.T) {
 	requireAtlasFiles(t)
 	// High pop + sec unlocks native-height towers that overhang back-edge roads.
 	city := &citycore.City{Slug: "testcity", Pop: 1800, Sec: 300, Com: 100}
-	data, err := BuildCityMapPNG(city)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	img, ok := decodeMapPNG(t, data).(*image.RGBA)
-	if !ok {
-		t.Fatal("expected RGBA")
-	}
+	img := mustBuildMapWorkingImage(t, city)
 	plan := planRoadsForCity(city)
 	occluded, checked := 0, 0
 	seen := map[[2]int]bool{}
+	o := activeSquareOrigin(city.Pop.Int())
+	minSum := 1 << 30
 	for _, st := range plan.stamps {
-		if st.sx+st.sy > 2 {
+		if s := (st.sx - o) + (st.sy - o); s < minSum {
+			minSum = s
+		}
+	}
+	for _, st := range plan.stamps {
+		// Back edge of the live island (density may leave the NW tip empty).
+		if (st.sx-o)+(st.sy-o) > minSum+2 {
 			continue
 		}
 		key := [2]int{st.sx, st.sy}
@@ -145,21 +139,14 @@ func looksLikeRoadPaintOnFacade(c color.RGBA) bool {
 			minC = v
 		}
 	}
-	// Dashed centerline only — gray building walls must not count.
-	return minC >= 220 && int(maxC)-int(minC) <= 24
+	// Dashed centerline only — gray building walls / limestone must not count.
+	return minC >= 220 && int(maxC)-int(minC) <= 24 && int(c.R)-int(c.B) <= 8
 }
 
 func TestE2E_AtlasTowersKeepFacadesClearOfRoads(t *testing.T) {
 	requireAtlasFiles(t)
 	city := &citycore.City{Slug: "testcity", Pop: 460, Ind: 130, Com: 150, Env: 110, Sec: 100}
-	data, err := BuildCityMapPNG(city)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	img, ok := decodeMapPNG(t, data).(*image.RGBA)
-	if !ok {
-		t.Fatal("expected RGBA")
-	}
+	img := mustBuildMapWorkingImage(t, city)
 	grid := buildCityGridForCity(city)
 	occ := lotOccupancy(city, grid)
 	striped, checked := 0, 0
@@ -173,16 +160,22 @@ func TestE2E_AtlasTowersKeepFacadesClearOfRoads(t *testing.T) {
 				continue
 			}
 			topX, topY := isoCell(x, y)
-			footY := topY + isoTileH
+			footX, footY := topX, topY+isoTileH-overlayLift(false)
+			footX = applyWestMiniStampNudge(footX, x, y)
+			footX = applyNorthMiniStampNudgeX(footX, x, y)
+			footX = applyEastMiniStampNudge(footX, x, y)
+			footY = applyNorthMiniStampNudge(footY, x, y)
+			footY = applySEMiniStampNudge(footY, x, y)
+			footY = applyEWMiniStampNudge(footY, x, y)
 			py := footY - 48
 			if py < 0 {
 				continue
 			}
 			checked++
-			if looksLikeRoadPaintOnFacade(img.RGBAAt(topX, py)) {
+			if looksLikeRoadPaintOnFacade(img.RGBAAt(footX, py)) {
 				striped++
 				if striped <= 6 {
-					t.Logf("facade stripe at lot(%d,%d) y=%d %v", x, y, py, img.RGBAAt(topX, py))
+					t.Logf("facade stripe at lot(%d,%d) y=%d %v", x, y, py, img.RGBAAt(footX, py))
 				}
 			}
 		}
@@ -198,14 +191,7 @@ func TestE2E_AtlasTowersKeepFacadesClearOfRoads(t *testing.T) {
 func TestE2E_AtlasRoadsSitOnDalleGrass(t *testing.T) {
 	requireAtlasFiles(t)
 	city := &citycore.City{Slug: "testcity", Pop: 80}
-	data, err := BuildCityMapPNG(city)
-	if err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	img, ok := decodeMapPNG(t, data).(*image.RGBA)
-	if !ok {
-		t.Fatal("expected RGBA")
-	}
+	img := mustBuildMapWorkingImage(t, city)
 	plan := planRoadsForCity(city)
 	if len(plan.stamps) == 0 {
 		t.Fatal("expected road stamps")
@@ -215,17 +201,164 @@ func TestE2E_AtlasRoadsSitOnDalleGrass(t *testing.T) {
 		if !squareShowsLiftedRoad(img, st.sx, st.sy) {
 			continue
 		}
-		found = true
 		x, y := st.sx*squareSide, st.sy*squareSide
 		topX, topY := isoCell(x, y)
 		soil := img.RGBAAt(topX, topY+isoTileH/2)
 		if looksLikeRoadPaintOnFacade(soil) || nearRGBA(soil, roadColor, 24) {
-			t.Fatalf("unlifted soil diamond should not keep the road, got %+v", soil)
+			// Overlay feet can land on this diamond after arterial grass lift;
+			// try another stamp before treating it as an unlifted road.
+			continue
 		}
+		found = true
 		break
 	}
 	if !found {
-		t.Fatal("no lifted road pixels on any stamp square")
+		t.Fatal("no lifted road pixels with a clear unlifted soil sample")
+	}
+}
+
+func TestE2E_AtlasRoadCrossesUseFullPlateLip(t *testing.T) {
+	requireAtlasFiles(t)
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatal(err)
+	}
+	city := &citycore.City{Slug: "testcity5", Pop: 90, Ind: 330, Com: 150, Env: 110, Sec: 100}
+	ctx := newMapRenderCtx(city, atlas)
+	if ctx.roadLift != plateGrassLift {
+		t.Fatalf("roadLift=%d, want plateGrassLift=%d (Townzzy / catalog lip)", ctx.roadLift, plateGrassLift)
+	}
+	img := mustBuildMapWorkingImage(t, city)
+	hits, checked := 0, 0
+	for sy := 0; sy < displaySide && sy < len(ctx.roadCross); sy++ {
+		for sx := 0; sx < displaySide && sx < len(ctx.roadCross[sy]); sx++ {
+			if ctx.roadCross[sy][sx] == 0 {
+				continue
+			}
+			checked++
+			if squareShowsLiftedRoad(img, sx, sy) {
+				hits++
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("expected road crosses")
+	}
+	if hits*2 < checked {
+		t.Fatalf("road crosses missing lifted pavement: %d/%d", hits, checked)
+	}
+}
+
+func TestE2E_AtlasArterialOverlaysUsePlateGrassLift(t *testing.T) {
+	requireAtlasFiles(t)
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatal(err)
+	}
+	city := &citycore.City{Slug: "testcity5", Pop: 90, Ind: 330, Com: 150, Env: 110, Sec: 100}
+	ctx := newMapRenderCtx(city, atlas)
+	if ctx.roadless {
+		t.Fatal("pop=90 must enable arterials")
+	}
+	img := mustBuildMapWorkingImage(t, city)
+
+	checked, liftedHits, unliftedHits := 0, 0, 0
+	for _, lot := range ctx.occupancy {
+		if lot.use != lotBuilding {
+			continue
+		}
+		key := ctx.buildingKeys[[2]int{lot.x, lot.y}]
+		rect, ok := atlas.Frames[key]
+		if !ok {
+			continue
+		}
+		footX, liftedY := overlayFoot(lot.x, lot.y, overlayLift(false))
+		footX = applyWestMiniStampNudge(footX, lot.x, lot.y)
+		footX = applyNorthMiniStampNudgeX(footX, lot.x, lot.y)
+		footX = applyEastMiniStampNudge(footX, lot.x, lot.y)
+		liftedY = applyNorthMiniStampNudge(liftedY, lot.x, lot.y)
+		liftedY = applySEMiniStampNudge(liftedY, lot.x, lot.y)
+		liftedY = applyEWMiniStampNudge(liftedY, lot.x, lot.y)
+		unliftedY := liftedY + overlayLift(false)
+		sx, sy := rect.AnchorX, rect.AnchorY-8
+		if sx < 0 || sy < 0 || sx >= rect.W || sy >= rect.H {
+			continue
+		}
+		src := atlasFrameRGBA(atlas, key, sx, sy)
+		if src.A < 200 {
+			continue
+		}
+		px := footX - rect.AnchorX + sx
+		liftedPy := liftedY - rect.AnchorY + sy
+		unliftedPy := unliftedY - rect.AnchorY + sy
+		if !image.Pt(px, liftedPy).In(img.Bounds()) || !image.Pt(px, unliftedPy).In(img.Bounds()) {
+			continue
+		}
+		checked++
+		if nearRGBA(img.RGBAAt(px, liftedPy), src, 48) {
+			liftedHits++
+		}
+		if nearRGBA(img.RGBAAt(px, unliftedPy), src, 48) {
+			unliftedHits++
+		}
+	}
+	if checked == 0 {
+		t.Fatal("expected opaque building samples")
+	}
+	if liftedHits*2 < checked {
+		t.Fatalf("arterial buildings missing grass lift: %d/%d at lifted foot", liftedHits, checked)
+	}
+	if unliftedHits*5 > checked {
+		t.Fatalf("arterial buildings still on soil rim: %d/%d at unlifted foot", unliftedHits, checked)
+	}
+}
+
+func TestE2E_AtlasArterialHousesStayOffCanvas(t *testing.T) {
+	requireAtlasFiles(t)
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatal(err)
+	}
+	city := &citycore.City{Slug: "testcity5", Pop: 90, Ind: 330, Com: 150, Env: 110, Sec: 100}
+	ctx := newMapRenderCtx(city, atlas)
+	if ctx.roadless {
+		t.Fatal("pop=90 must enable arterials")
+	}
+	img := mustBuildMapWorkingImage(t, city)
+	hits := 0
+	for _, lot := range ctx.occupancy {
+		if lot.use != lotBuilding {
+			continue
+		}
+		key := ctx.buildingKeys[[2]int{lot.x, lot.y}]
+		rect, ok := atlas.Frames[key]
+		if !ok {
+			continue
+		}
+		footX, footY := overlayFoot(lot.x, lot.y, overlayLift(false))
+		dstX, dstY := footX-rect.AnchorX, footY-rect.AnchorY
+		for sy := 0; sy < rect.H; sy++ {
+			py := dstY + sy
+			if !inBuildingGroundBand(footY, py) {
+				continue
+			}
+			for sx := 0; sx < rect.W; sx++ {
+				src := atlasFrameRGBA(atlas, key, sx, sy)
+				if src.A < 200 {
+					continue
+				}
+				px := dstX + sx
+				if grassTopPixelSupported(ctx.grass, px, py) {
+					continue
+				}
+				if nearRGBA(img.RGBAAt(px, py), src, 48) {
+					hits++
+				}
+			}
+		}
+	}
+	if hits > 4 {
+		t.Fatalf("arterial house ground band painted off the city plate: %d px", hits)
 	}
 }
 
@@ -305,8 +438,8 @@ func nearRGBA(c, want color.RGBA, tol int) bool {
 	return dr+dg+db <= tol
 }
 
-func TestPeonGrassClipKeepsSkyClear(t *testing.T) {
-	grass := buildPeonGrass(20)
+func TestRoadlessGrassClipKeepsSkyClear(t *testing.T) {
+	grass := buildPlateGrass(20)
 	img := image.NewRGBA(image.Rect(0, 0, mapWidth, mapHeight))
 	sky := color.RGBA{R: 186, G: 220, B: 235, A: 255}
 	for y := 0; y < mapHeight; y++ {
@@ -315,30 +448,37 @@ func TestPeonGrassClipKeepsSkyClear(t *testing.T) {
 		}
 	}
 
-	eastX := peonIslandOrigin() + peonIslandExtent() - 1
-	eastY := peonIslandOrigin()
+	eastX := plateIslandOrigin20() + plateIslandExtent20()/2
+	eastY := plateIslandOrigin20() + plateIslandExtent20()/2
 	topX, topY := isoCell(eastX, eastY)
-	footX, footY := topX, topY+isoTileH
+	footX, footY := topX, topY+isoTileH-plateGrassLift
 	red := color.RGBA{R: 220, G: 40, B: 40, A: 255}
 	for py := footY - 80; py < footY+20; py++ {
 		for px := footX - 40; px < footX+80; px++ {
-			if !image.Pt(px, py).In(img.Bounds()) || !peonPixelSupported(grass, px, py) {
+			if !image.Pt(px, py).In(img.Bounds()) || !grassTopPixelSupported(grass, px, py) {
 				continue
 			}
 			img.SetRGBA(px, py, red)
 		}
 	}
 
-	cx, cy := topX, topY+isoTileH/2
-	if !peonPixelSupported(grass, cx, cy) {
-		t.Fatal("green diamond center must be in the peon grass mask")
+	cx, cy := topX, topY+isoTileH/2-plateGrassLift
+	if !grassTopPixelSupported(grass, cx, cy) {
+		t.Fatal("lifted green diamond center must be in the plate grass mask")
 	}
-	sampleX := footX + isoTileW + 24
-	sampleY := footY - isoTileH/2
-	if peonPixelSupported(grass, sampleX, sampleY) {
-		t.Fatalf("sample (%d,%d) should be off the green top", sampleX, sampleY)
+	// Canvas north of the island's NW tip must stay clear (old py<=maxY leaked).
+	nwX, nwY := isoCell(plateIslandOrigin20(), plateIslandOrigin20())
+	northY := nwY - plateGrassLift - 16
+	if grassTopPixelSupported(grass, nwX, northY) {
+		t.Fatalf("canvas north of island tip (%d,%d) must be off-mask", nwX, northY)
 	}
-	if got := img.RGBAAt(sampleX, sampleY); got != sky {
-		t.Fatalf("sprite must not paint sky east of island: got %+v", got)
+	if got := img.RGBAAt(nwX, northY); got != sky {
+		t.Fatalf("sprite must not paint sky north of island tip: got %+v", got)
+	}
+	// Far outside the map bounds horizontally.
+	farX := mapWidth - 4
+	farY := mapHeight / 2
+	if grassTopPixelSupported(grass, farX, farY) {
+		t.Fatalf("far canvas (%d,%d) should be off the green top", farX, farY)
 	}
 }

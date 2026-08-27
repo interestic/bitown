@@ -6,31 +6,37 @@ import (
 	"github.com/interestic/bitown/internal/citycore"
 )
 
-// Growth-tier thresholds remapped from Cs.hx POP_* onto bitown's ~500 pop scale.
-// See docs/map-building-growth.md.
+// Building-band thresholds from city population (see wiki Glossary).
+// hut band < hutBandPop; house band < houseBandPop; city band otherwise.
+// cityHugePop gates landmark mix / mcHouse3-style unlocks inside city band.
 const (
 	DefaultBuildingTier = 1
 
-	popTierPeon   = 40
-	popTierNormal = 120
-	popTierHuge   = 350
+	hutBandPop   = 40
+	houseBandPop = 120
+	cityHugePop  = 350
 
 	// Outer lots (dist² from center): drop max tier by one; far rim caps at 1
 	// so huge cities still keep house-scale outskirts (big_city, #49).
-	// Scaled with map half-extent so 30×30 crops behave like the old 20×20.
 )
 
-func outerLotDist2() int {
-	h := mapCols / 2
+// outerLotDist2ForPop is the periphery tier cap relative to the live island,
+// not the full displaySide field (otherwise small towns never hit the rim).
+func outerLotDist2ForPop(pop int) int {
+	e := plateIslandExtent(pop)
+	if e < 2 {
+		e = 2
+	}
+	h := e / 2
 	return (h * h) / 2
 }
 
 // maxTierForPop returns the highest building tier allowed for a city pop.
 func maxTierForPop(pop int) int {
 	switch {
-	case pop < popTierPeon:
+	case pop < hutBandPop:
 		return 1
-	case pop < popTierNormal:
+	case pop < houseBandPop:
 		return 2
 	default:
 		return 3
@@ -38,13 +44,13 @@ func maxTierForPop(pop int) int {
 }
 
 // landmarkMixPermille is the chance (0..1000) to draw from the landmark pool.
-// peon/normal: 0; big: small; huge: higher; sec/com give a weak boost.
+// hut/house band: 0; city band: small; cityHugePop+: higher; sec/com give a weak boost.
 func landmarkMixPermille(pop, sec, com int) int {
-	if pop < popTierNormal {
+	if pop < houseBandPop {
 		return 0
 	}
 	chance := 15
-	if pop >= popTierHuge {
+	if pop >= cityHugePop {
 		chance = 45
 	}
 	chance += sec / 50
@@ -88,15 +94,15 @@ func tierPickWeight(tier, pop int) int {
 		tier = 3
 	}
 	switch {
-	case pop < popTierPeon:
+	case pop < hutBandPop:
 		return 4 - tier
-	case pop < popTierNormal:
+	case pop < houseBandPop:
 		w := 3 - tier
 		if w < 1 {
 			w = 1
 		}
 		return w
-	case pop < popTierHuge:
+	case pop < cityHugePop:
 		// Big: peak at mid-rise. Tier 3 is unlocked but must not dominate
 		// the instant pop=120 threshold (outer lots also jump maxTier 1→2).
 		if tier >= 3 {
@@ -121,9 +127,9 @@ func tierPickWeightForTag(tag string, tier, pop int) int {
 		tier = 3
 	}
 	switch {
-	case pop < popTierNormal:
+	case pop < houseBandPop:
 		return tierPickWeight(tier, pop)
-	case pop < popTierHuge:
+	case pop < cityHugePop:
 		// Big: the residential pool has one tier-3 tower and no tier 2.
 		// Generic weights would give that tower ~40% of residential lots.
 		switch tier {
@@ -205,7 +211,7 @@ func (a *Atlas) pickBuildingFrameForTagAvoiding(city *citycore.City, tag string,
 		return ""
 	}
 	picked := inFolder[int((seed>>8)%uint32(len(inFolder)))] //#nosec G115
-	return picked + "_v00.png"
+	return buildingFrameColorKey(a, picked, seed)
 }
 
 func filterBasesByUpdateLib(a *Atlas, bases []string, densityMax, cityPop int) []string {
@@ -349,10 +355,18 @@ func (a *Atlas) pickBuildingKeyForLot(city *citycore.City, tag string, x, y int,
 	return key
 }
 
-var cardinalDirs = [4][2]int{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}
+// folderAvoidChebyshev is how far same-folder building picks are suppressed.
+// Roadless genMiniSquare feet sit closer than the old plate-center anchors (#116),
+// so mid-rise clones need chebyshev ≤ 2 (#114). Arterial maps keep ≤ 1.
+func folderAvoidChebyshev(city *citycore.City) int {
+	if city != nil && !arterialsEnabled(city) {
+		return 2
+	}
+	return 1
+}
 
-// assignBuildingKeys picks frames in raster order, skipping high-tier folders
-// already used on a cardinal neighbor. Low-tier houses may still clump.
+// assignBuildingKeys picks frames in raster order, skipping folders already
+// used within folderAvoidChebyshev of the lot (any growth tier).
 func assignBuildingKeys(atlas *Atlas, city *citycore.City, occ map[[2]int]lotCell, densityMax int) map[[2]int]string {
 	if atlas == nil || city == nil {
 		return nil
@@ -372,25 +386,24 @@ func assignBuildingKeys(atlas *Atlas, city *citycore.City, occ map[[2]int]lotCel
 	})
 	keys := make(map[[2]int]string, len(lots))
 	slug := city.Slug.String()
+	radius := folderAvoidChebyshev(city)
 	for _, p := range lots {
-		avoid := make(map[string]struct{}, 4)
-		for _, d := range cardinalDirs {
-			nb := keys[[2]int{p.x + d[0], p.y + d[1]}]
-			if nb == "" || !avoidRepeatNeighbor(atlas, nb) {
-				continue
+		avoid := make(map[string]struct{}, 24)
+		for dy := -radius; dy <= radius; dy++ {
+			for dx := -radius; dx <= radius; dx++ {
+				if dx == 0 && dy == 0 {
+					continue
+				}
+				nb := keys[[2]int{p.x + dx, p.y + dy}]
+				if nb == "" {
+					continue
+				}
+				avoid[spriteFolderBase(nb)] = struct{}{}
 			}
-			avoid[spriteFolderBase(nb)] = struct{}{}
 		}
 		lot := occ[[2]int{p.x, p.y}]
 		seed := hashCell(slug, p.x, p.y)
 		keys[[2]int{p.x, p.y}] = atlas.pickBuildingKeyForLot(city, lot.tag, p.x, p.y, seed, avoid, lot.density, densityMax)
 	}
 	return keys
-}
-
-func avoidRepeatNeighbor(a *Atlas, key string) bool {
-	if a == nil || key == "" {
-		return false
-	}
-	return a.folderTier(spriteFolderBase(key)) >= 2
 }

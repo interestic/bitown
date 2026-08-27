@@ -52,7 +52,7 @@ func isTerrainColor(c color.RGBA) bool {
 	if c == roadColor {
 		return true
 	}
-	// Peon sky canvas (Townzzy-like).
+	// Roadless sky canvas (Townzzy-like).
 	if c == (color.RGBA{R: 186, G: 220, B: 235, A: 255}) {
 		return true
 	}
@@ -169,8 +169,11 @@ func TestBuildCityMapPNG_FallbackWhenAtlasMissing(t *testing.T) {
 	}
 	img := decodeMapPNG(t, data)
 	b := img.Bounds()
-	if b.Dx() != mapWidth || b.Dy() != mapHeight {
-		t.Fatalf("unexpected dimensions: got %dx%d, want %dx%d", b.Dx(), b.Dy(), mapWidth, mapHeight)
+	if b.Dx() != b.Dy() {
+		t.Fatalf("unexpected dimensions: got %dx%d, want square", b.Dx(), b.Dy())
+	}
+	if b.Dx() < mapMinSquare {
+		t.Fatalf("png %dx%d, want at least %d square", b.Dx(), b.Dy(), mapMinSquare)
 	}
 	colors := countUniqueColors(img)
 	if colors > 10 {
@@ -231,31 +234,25 @@ func TestBuildCityMapPNG_TreesStayOffDalleSoil(t *testing.T) {
 	}
 	for _, tc := range cases {
 		city := &citycore.City{Slug: "testcity", Pop: citycore.SectorValue(tc.pop), Env: citycore.SectorValue(tc.env), Ind: 1, Com: 1, Sec: 1}
-		data, err := BuildCityMapPNG(city)
-		if err != nil {
-			t.Fatalf("pop=%d render: %v", tc.pop, err)
-		}
-		img, ok := decodeMapPNG(t, data).(*image.RGBA)
-		if !ok {
-			t.Fatal("expected RGBA map")
-		}
-		grass := buildPeonGrass(tc.pop)
+		// Pre-fit working canvas shares isoCell / grass-mask coordinates.
+		img := mustBuildMapWorkingImage(t, city)
+		grass := buildPlateGrass(tc.pop)
 		b := img.Bounds()
 		for y := b.Min.Y; y < b.Max.Y; y++ {
 			for x := b.Min.X; x < b.Max.X; x++ {
 				if x < 0 || x >= mapWidth || !grass.col[x] {
 					continue
 				}
-				// Geometric diamonds sit ~1–2px inside mcDalle raster; skip that
-				// fringe so yellow-olive edge texels are not treated as trees.
-				if y <= grass.maxY[x]+2 {
+				// Geometric grass top sits above the soil lip; skip the lip and a
+				// little mcDalle fringe so side texels are not treated as trees.
+				if y <= grass.maxY[x]+plateGrassLift+8 {
 					continue
 				}
 				c := img.RGBAAt(x, y)
 				if !isFoliageColor(c) {
 					continue
 				}
-				t.Fatalf("pop=%d foliage on dalle soil at (%d,%d) %+v", tc.pop, x, y, c)
+				t.Fatalf("pop=%d foliage on plate soil at (%d,%d) %+v", tc.pop, x, y, c)
 			}
 		}
 	}

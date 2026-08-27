@@ -355,7 +355,7 @@ func TestFarmClipsExcludedFromBuildingPool(t *testing.T) {
 		}
 	}
 	if atlas.PickFarmKey(0) == "" {
-		t.Fatal("farm picker must still resolve mini champs after catalog exclusion")
+		t.Fatal("farm picker must still resolve mini farm after catalog exclusion")
 	}
 }
 
@@ -569,7 +569,7 @@ func TestDrawRoadStampCoversSquareEdge(t *testing.T) {
 	dst := image.NewRGBA(image.Rect(0, 0, mapWidth, mapHeight))
 	sx, sy := 2, 2
 	footX, footY := squareRoadFoot(sx, sy, -roadGrassLift)
-	if !atlas.drawRoadOnSquare(dst, "road", footX, footY, sx, sy, -roadGrassLift, 0.22) {
+	if !atlas.drawRoadOnSquare(dst, "road", footX, footY, sx, sy, -roadGrassLift, 0.22, plateGrass{}) {
 		t.Fatal("drawRoadOnSquare returned false")
 	}
 	// Near the SE foot (stamp anchor) and a bit north into the square.

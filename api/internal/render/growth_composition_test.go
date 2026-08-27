@@ -218,3 +218,74 @@ func countHighTierSameFolderPairs(atlas *Atlas, keys map[[2]int]string) (same, p
 	}
 	return same, pairs
 }
+
+func TestRoadlessAvoidsNearbySameFolderBuildings(t *testing.T) {
+	requireAtlasFiles(t)
+	atlas, err := loadAtlas()
+	if err != nil {
+		t.Fatal(err)
+	}
+	city := &citycore.City{Slug: "testcity7", Pop: 40, Ind: 130, Com: 150, Env: 110, Sec: 100}
+	grid := buildCityGridForCity(city)
+	occ := lotOccupancy(city, grid)
+	keys := assignBuildingKeys(atlas, city, occ, genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String())).max)
+	if len(keys) < 2 {
+		t.Fatal("expected multiple roadless buildings")
+	}
+	radius := folderAvoidChebyshev(city)
+	if radius != 2 {
+		t.Fatalf("roadless folder avoid radius=%d, want 2", radius)
+	}
+	same := 0
+	for pos, key := range keys {
+		if key == "" {
+			continue
+		}
+		folder := spriteFolderBase(key)
+		for dy := -radius; dy <= radius; dy++ {
+			for dx := -radius; dx <= radius; dx++ {
+				if dx == 0 && dy == 0 {
+					continue
+				}
+				nb := keys[[2]int{pos[0] + dx, pos[1] + dy}]
+				if nb == "" {
+					continue
+				}
+				if spriteFolderBase(nb) == folder {
+					same++
+				}
+			}
+		}
+	}
+	if same != 0 {
+		t.Fatalf("chebyshev-%d same-folder building pairs=%d, want 0", radius, same/2)
+	}
+}
+
+func TestArterialCrossRoadsStillPlan(t *testing.T) {
+	// Townzzy / Game.hx: scoreRoad > 6 stamps CROSS inside density squares.
+	city := &citycore.City{Slug: "cross-town", Pop: 120, Tra: 10}
+	dens := genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String()))
+	plan := planRoads(city, dens)
+	crossN := 0
+	for sy := 0; sy < displaySide; sy++ {
+		for sx := 0; sx < displaySide; sx++ {
+			if plan.cross[sy][sx] > 0 {
+				crossN++
+			}
+		}
+	}
+	if crossN == 0 {
+		t.Fatal("pop=120 with tra should plan some CROSS roads (Game.hx scoreRoad>6)")
+	}
+	occ := lotOccupancy(city, plan.grid)
+	for _, lot := range occ {
+		if lot.use != lotBuilding {
+			continue
+		}
+		if !isGameHxMiniFoot(lot.x, lot.y) {
+			// POP_HUGE square origin is allowed; isGameHxMiniFoot covers it.
+			t.Fatalf("arterial building at (%d,%d) not on Game.hx foot", lot.x, lot.y)
+		}
+	}
+}

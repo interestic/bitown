@@ -38,6 +38,7 @@ MAP_TAGS = {
 }
 BUILDING_TAGS = {"residential", "industrial", "commercial", "landmark"}
 NON_BUILDING_TAGS = MAP_TAGS - BUILDING_TAGS
+UNLOCK_KEYS = frozenset({"min_pop", "min_ind", "min_com", "min_env", "min_sec", "min_tra"})
 
 # Substrings that must never appear in the map building pool.
 BUILDING_DENY_SUBSTR = (
@@ -92,8 +93,10 @@ def validate_atlas_frames(data: dict, png_path: Path) -> None:
         if x < 0 or y < 0 or x + w > png_w or y + h > png_h:
             fail(f"frame {key} exceeds atlas png {png_w}x{png_h}")
         # Foot anchors map the normalized canvas foot into trimmed-frame space
-        # and may sit outside the opaque bbox (asymmetric sprites).
-        if ax < -96 or ay < -96 or ax > w + 96 or ay > h + 96:
+        # and may sit outside the opaque bbox (asymmetric sprites). Native-height
+        # towers use canvases up to ~528px, so slack matches isoPad.
+        slack = 528
+        if ax < -slack or ay < -slack or ax > w + slack or ay > h + slack:
             fail(f"frame {key} anchor implausibly far from frame")
         if w == 32 and h == 32:
             square32 += 1
@@ -159,13 +162,60 @@ def validate_buildings_manifest(data: dict) -> None:
         if tag in BUILDING_TAGS and group != "building":
             fail(f"{base} has building tag {tag} but group {group}")
         if tag in BUILDING_TAGS and base not in bases:
-            fail(f"{base} tagged {tag} missing from building_bases")
+            if entry.get("pool_eligible") is True:
+                fail(f"{base} pool_eligible but missing from building_bases")
+            # Former building modules keep building_class while tagged exclude.
+        if entry.get("pool_eligible") is True and base not in bases:
+            fail(f"{base} pool_eligible=true but not in building_bases")
+        if entry.get("pool_eligible") is True and tag not in BUILDING_TAGS:
+            fail(f"{base} pool_eligible=true but tag is {tag}")
+        if base in bases and entry.get("pool_eligible") is not True:
+            fail(f"{base} in building_bases but pool_eligible is not true")
         if tag in NON_BUILDING_TAGS and base in bases:
             fail(f"{base} tagged {tag} must not be in building_bases")
         if tag in BUILDING_TAGS:
             tier = entry.get("tier")
             if not isinstance(tier, int) or tier < 0 or tier > 3:
                 fail(f"{base} building entry needs int tier 0..3, got {tier!r}")
+            unlock = entry.get("unlock")
+            if unlock is not None:
+                if not isinstance(unlock, dict):
+                    fail(f"{base} unlock must be an object")
+                for key, value in unlock.items():
+                    if key not in UNLOCK_KEYS:
+                        fail(f"{base} unlock has unknown key {key!r}")
+                    if not isinstance(value, int) or value < 0:
+                        fail(f"{base} unlock.{key} must be int >= 0")
+        if tag == "tree":
+            unlock = entry.get("unlock")
+            if unlock is not None:
+                if not isinstance(unlock, dict):
+                    fail(f"{base} unlock must be an object")
+                for key, value in unlock.items():
+                    if key not in UNLOCK_KEYS:
+                        fail(f"{base} unlock has unknown key {key!r}")
+                    if not isinstance(value, int) or value < 0:
+                        fail(f"{base} unlock.{key} must be int >= 0")
+        for field in ("needed_characters", "needed_direct", "dependent_characters", "dependent_direct"):
+            val = entry.get(field)
+            if val is None:
+                continue
+            if not isinstance(val, list) or any(not isinstance(x, int) or x < 0 for x in val):
+                fail(f"{base} {field} must be a list of non-negative ints")
+        if "character_id" in entry and not isinstance(entry.get("character_id"), int):
+            fail(f"{base} character_id must be int")
+        if "pool_eligible" in entry and not isinstance(entry.get("pool_eligible"), bool):
+            fail(f"{base} pool_eligible must be bool")
+        role = entry.get("role")
+        if role is not None and not isinstance(role, str):
+            fail(f"{base} role must be string")
+        lib_ref = entry.get("library_ref")
+        if lib_ref is not None:
+            if not isinstance(lib_ref, dict):
+                fail(f"{base} library_ref must be object")
+            for key in ("library_id", "library_name", "frame"):
+                if key not in lib_ref:
+                    fail(f"{base} library_ref missing {key}")
 
     by_tier = counts.get("by_tier") or {}
     if not isinstance(by_tier, dict):

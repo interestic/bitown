@@ -73,3 +73,18 @@ func TestBuildCityOGPNG_Dimensions(t *testing.T) {
 		t.Fatalf("og png size = %dx%d, want %dx%d", b.Dx(), b.Dy(), OGWidth, OGHeight)
 	}
 }
+
+func TestOGEntityTag_BumpsWithRendererVersion(t *testing.T) {
+	// og-v2 must not collide with the historical og-v1 hash shape for the same city.
+	city := &citycore.City{Slug: "og-ver", Pop: 7}
+	got, err := OGEntityTag(city)
+	if err != nil {
+		t.Fatalf("OGEntityTag: %v", err)
+	}
+	if got == "" || got[0] != '"' {
+		t.Fatalf("expected quoted etag, got %q", got)
+	}
+	if ogRendererVersion != "og-v2" {
+		t.Fatalf("ogRendererVersion = %q, want og-v2", ogRendererVersion)
+	}
+}

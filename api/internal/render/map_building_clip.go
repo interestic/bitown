@@ -8,7 +8,8 @@ import (
 
 // buildingGroundBand is the vertical footprint near the foot used to clear
 // sideways spill into street diamonds without slicing mid/upper facades.
-const buildingGroundBand = isoTileH + roadGrassLift // foot + grass lift onto streets
+// Depth matches the plate soil lip (same as the old isoTileH+shortRoadLift).
+const buildingGroundBand = plateGrassLift
 
 type roadMaskData struct {
 	mask []bool
@@ -27,16 +28,17 @@ func buildRoadMaskDataOffset(grid cityGrid, dy int) roadMaskData {
 	return roadMaskData{mask: mask}
 }
 
-// peonGrass is the green diamond tops of the peon dalle island. Sprite pixels
-// whose column never hits this surface, or that fall below it, are off-island.
-type peonGrass struct {
+// plateGrass is the grass-top mask of the plate island (roadless or arterial).
+// Built at -plateGrassLift so it matches mcDalle grass, not the flat cell floor
+// or the soil lip. Sprite pixels off this surface are rejected.
+type plateGrass struct {
 	mask []bool
 	col  []bool
 	maxY []int
 }
 
-func buildPeonGrass(pop int) peonGrass {
-	g := peonGrass{
+func buildPlateGrass(pop int) plateGrass {
+	g := plateGrass{
 		mask: make([]bool, mapWidth*mapHeight),
 		col:  make([]bool, mapWidth),
 		maxY: make([]int, mapWidth),
@@ -44,11 +46,13 @@ func buildPeonGrass(pop int) peonGrass {
 	for i := range g.maxY {
 		g.maxY[i] = -1
 	}
-	o := peonIslandOriginFor(pop)
-	e := peonIslandExtentFor(pop)
+	o := plateIslandOrigin(pop)
+	e := plateIslandExtent(pop)
 	for y := o; y < o+e; y++ {
 		for x := o; x < o+e; x++ {
-			markIsoDiamondMask(g.mask, mapWidth, x, y, 1)
+			// Align with overlayFoot / roadGrassLift (grass top, not soil rim).
+			// edgeOverlap=2 covers geometric-vs-mcDalle raster fringe.
+			markIsoDiamondMaskOffset(g.mask, mapWidth, x, y, 2, -plateGrassLift)
 		}
 	}
 	for py := 0; py < mapHeight; py++ {
@@ -63,18 +67,16 @@ func buildPeonGrass(pop int) peonGrass {
 	return g
 }
 
-func peonPixelSupported(g peonGrass, px, py int) bool {
+func grassTopPixelSupported(g plateGrass, px, py int) bool {
+	if len(g.mask) == 0 {
+		return true
+	}
 	if px < 0 || px >= mapWidth || py < 0 || py >= mapHeight {
 		return false
 	}
-	if !g.col[px] {
-		return false
-	}
-	return py <= g.maxY[px]
-}
-
-func markIsoDiamondMask(mask []bool, stride, cellX, cellY, edgeOverlap int) {
-	markIsoDiamondMaskOffset(mask, stride, cellX, cellY, edgeOverlap, 0)
+	// Require the pixel itself to sit on a grass-top diamond. The old
+	// py<=maxY[col] test allowed north hang onto the flat canvas.
+	return g.mask[py*mapWidth+px]
 }
 
 func markIsoDiamondMaskOffset(mask []bool, stride, cellX, cellY, edgeOverlap, dy int) {
@@ -174,7 +176,7 @@ func pointInIsoBlockOffset(px, py, x0, y0, n, dy int, expand float64) bool {
 }
 
 // skipBuildingPixelOnRoad clears ground-band spill onto lifted street diamonds.
-// The band includes the dalle soil lip so curb stays clear after the 20px grass
+// The band includes the plate soil lip so curb stays clear after the 20px grass
 // lift. Upper facade may overhang neighboring lots (Flash sprites are wider
 // than one tile); forcing a lot-column clip sliced apartment walls in half.
 func skipBuildingPixelOnRoad(roads roadMaskData, footY, px, py, lotX, lotY int) bool {
@@ -184,7 +186,7 @@ func skipBuildingPixelOnRoad(roads roadMaskData, footY, px, py, lotX, lotY int) 
 	return !pointInIsoDiamond(px, py, lotX, lotY)
 }
 
-func (a *Atlas) drawBuildingAtFoot(dst *image.RGBA, key string, footX, footY, lotX, lotY int, roads roadMaskData) bool {
+func (a *Atlas) drawBuildingAtFoot(dst *image.RGBA, key string, footX, footY, lotX, lotY int, roads roadMaskData, grass plateGrass) bool {
 	rect, ok := a.Frames[key]
 	if !ok || rect.W == 0 || rect.H == 0 {
 		return false
@@ -196,7 +198,7 @@ func (a *Atlas) drawBuildingAtFoot(dst *image.RGBA, key string, footX, footY, lo
 		RGBAAt(x, y int) color.RGBA
 	})
 	if !ok {
-		return drawBuildingAtFootGeneric(dst, a.Image, rect, dstX, dstY, footY, lotX, lotY, roads)
+		return drawBuildingAtFootGeneric(dst, a.Image, rect, dstX, dstY, footY, lotX, lotY, roads, grass)
 	}
 
 	bounds := dst.Bounds()
@@ -211,6 +213,9 @@ func (a *Atlas) drawBuildingAtFoot(dst *image.RGBA, key string, footX, footY, lo
 				continue
 			}
 			if skipBuildingPixelOnRoad(roads, footY, px, py, lotX, lotY) {
+				continue
+			}
+			if !grassTopPixelSupported(grass, px, py) {
 				continue
 			}
 			c := src.RGBAAt(rect.X+sx, rect.Y+sy)
@@ -227,7 +232,7 @@ func (a *Atlas) drawBuildingAtFoot(dst *image.RGBA, key string, footX, footY, lo
 	return true
 }
 
-func drawBuildingAtFootGeneric(dst *image.RGBA, src image.Image, rect frameRect, dstX, dstY, footY, lotX, lotY int, roads roadMaskData) bool {
+func drawBuildingAtFootGeneric(dst *image.RGBA, src image.Image, rect frameRect, dstX, dstY, footY, lotX, lotY int, roads roadMaskData, grass plateGrass) bool {
 	tmp := image.NewRGBA(image.Rect(0, 0, rect.W, rect.H))
 	draw.Draw(tmp, tmp.Bounds(), src, image.Pt(rect.X, rect.Y), draw.Src)
 	bounds := dst.Bounds()
@@ -242,6 +247,9 @@ func drawBuildingAtFootGeneric(dst *image.RGBA, src image.Image, rect frameRect,
 				continue
 			}
 			if skipBuildingPixelOnRoad(roads, footY, px, py, lotX, lotY) {
+				continue
+			}
+			if !grassTopPixelSupported(grass, px, py) {
 				continue
 			}
 			c := tmp.RGBAAt(sx, sy)
@@ -274,7 +282,7 @@ func drawFallbackBuildingClipped(img *image.RGBA, cellSeed uint32, footX, footY,
 	}
 }
 
-func drawFallbackBuildingOnPeonGrass(img *image.RGBA, cellSeed uint32, footX, footY int, grass peonGrass) {
+func drawFallbackBuildingOnGrassTop(img *image.RGBA, cellSeed uint32, footX, footY int, grass plateGrass) {
 	c := buildingColor[cellSeed%buildingColorCount]
 	w, h := 10, 14
 	for py := footY - h; py < footY; py++ {
@@ -282,7 +290,7 @@ func drawFallbackBuildingOnPeonGrass(img *image.RGBA, cellSeed uint32, footX, fo
 			if !image.Pt(px, py).In(img.Bounds()) {
 				continue
 			}
-			if !peonPixelSupported(grass, px, py) {
+			if !grassTopPixelSupported(grass, px, py) {
 				continue
 			}
 			img.SetRGBA(px, py, c)

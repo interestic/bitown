@@ -6,13 +6,14 @@ import (
 	"github.com/interestic/bitown/internal/citycore"
 )
 
-// Cs.hx constants used by Game.hx density / building branches.
+// Cs.hx density thresholds (square density, not city population).
+// densityHut mirrors Cs.POP_PEON.
 const (
 	csSide      = 30 // Cs.SIDE — full Flash square grid
 	csPopHuge   = 200
 	csPopBig    = 20
 	csPopNormal = 2
-	csPopPeon   = 3
+	densityHut  = 3 // Cs.POP_PEON — hut-level square density
 
 	// mcHouse export character ids (updateLib size frames).
 	libHouse1 = 411
@@ -158,6 +159,7 @@ func genMapPop(pop int, rng *mapRNG) popDensity {
 			}
 			n += inc
 		}
+		raw := full
 		full = blurDensity(full)
 		densityMax = 0
 		for y := 0; y < csSide; y++ {
@@ -165,6 +167,24 @@ func genMapPop(pop int, rng *mapRNG) popDensity {
 				if full[y][x] > densityMax {
 					densityMax = full[y][x]
 				}
+			}
+		}
+		// Integer 3-tap blur rounds 1-pixel deposits to 0. Flash BlurFilter
+		// keeps 8-bit mass, so Game.hx neighbor farms exist at city pop=3.
+		// Restore raw deposits only when blur wiped everything; pop=1 stays
+		// empty (Townzzy initial 6×6 dalle).
+		if densityMax == 0 && farmsEnabled(pop) {
+			rawMax := 0
+			for y := 0; y < csSide; y++ {
+				for x := 0; x < csSide; x++ {
+					if raw[y][x] > rawMax {
+						rawMax = raw[y][x]
+					}
+				}
+			}
+			if rawMax > 0 {
+				full = raw
+				densityMax = rawMax
 			}
 		}
 	}
@@ -218,9 +238,9 @@ func updateLibHouseUnlocked(libraryID, densityMax, cityPop int) bool {
 	case libHouse1:
 		return true
 	case libHouse2:
-		return densityMax >= csPopBig || cityPop >= popTierNormal
+		return densityMax >= csPopBig || cityPop >= houseBandPop
 	case libHouse3:
-		return densityMax >= csPopHuge || cityPop >= popTierHuge
+		return densityMax >= csPopHuge || cityPop >= cityHugePop
 	default:
 		return true
 	}
@@ -234,7 +254,7 @@ func maxTierForLocalDensity(local, cityPop int) int {
 	switch {
 	case local <= 0:
 		return 0
-	case local < csPopPeon:
+	case local < densityHut:
 		t = 0
 	case local < csPopBig:
 		t = 1
@@ -243,11 +263,11 @@ func maxTierForLocalDensity(local, cityPop int) int {
 	default:
 		t = 3
 	}
-	if cityPop >= popTierHuge && local > 0 && t < 3 {
+	if cityPop >= cityHugePop && local > 0 && t < 3 {
 		t = 3
-	} else if cityPop >= popTierNormal && local > 0 && t < 2 {
+	} else if cityPop >= houseBandPop && local > 0 && t < 2 {
 		t = 2
-	} else if cityPop >= popTierPeon && local > 0 && t < 1 {
+	} else if cityPop >= hutBandPop && local > 0 && t < 1 {
 		t = 1
 	}
 	return t
@@ -260,21 +280,21 @@ func maxTierForLotWithLocal(local, cityPop, ind, com, x, y int, tag string) int 
 	// Rim industrial/commercial zones sit on the crop edge where genMapPop is
 	// often sparse; keep warehouses/shops placeable when sectors unlock them.
 	const sectorMid = 50 // matches buildings.json min_ind/min_com for tier≥2
-	if max < 2 && tag == TagIndustrial && cityPop >= popTierNormal && ind >= sectorMid {
+	if max < 2 && tag == TagIndustrial && cityPop >= houseBandPop && ind >= sectorMid {
 		max = 2
 	}
-	if max < 2 && tag == TagCommercial && cityPop >= popTierNormal && com >= sectorMid {
+	if max < 2 && tag == TagCommercial && cityPop >= houseBandPop && com >= sectorMid {
 		max = 2
 	}
 	// City-wide unlock still gates landmark-scale art at low total pop.
 	if cityMax := maxTierForPop(cityPop); max > cityMax {
 		max = cityMax
 	}
-	cx, cy := mapCols/2, mapRows/2
+	cx, cy := plateIslandCenter(cityPop)
 	dx, dy := x-cx, y-cy
 	dist2 := dx*dx + dy*dy
-	outer := outerLotDist2()
-	if tag == TagResidential && cityPop < popTierHuge {
+	outer := outerLotDist2ForPop(cityPop)
+	if tag == TagResidential && cityPop < cityHugePop {
 		outer = outer / 2
 		if outer < 1 {
 			outer = 1
@@ -294,8 +314,9 @@ func getBatType(city *citycore.City, x, y int, rng *mapRNG) int {
 	if city == nil || rng == nil {
 		return 0
 	}
-	dx := float64(x) - float64(mapCols)*0.5
-	dy := float64(y) - float64(mapRows)*0.5
+	cx, cy := plateIslandCenter(city.Pop.Int())
+	dx := float64(x) - float64(cx)
+	dy := float64(y) - float64(cy)
 	dist := math.Sqrt(dx*dx + dy*dy)
 	ray := getRayMax(float64(city.Pop.Int())) * float64(squareSide)
 	coef := 0.0

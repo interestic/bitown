@@ -6,12 +6,12 @@ import (
 	"github.com/interestic/bitown/internal/citycore"
 )
 
-func TestGenMapPopContinuousAcrossPeonThreshold(t *testing.T) {
+func TestGenMapPopContinuousAcrossRoadlessThreshold(t *testing.T) {
 	slug := "dens-cliff"
 	n39 := countBuildings(t, slug, 39)
 	n40 := countBuildings(t, slug, 40)
 	if n39 == 0 || n40 == 0 {
-		t.Fatalf("expected buildings on both sides of peon threshold: 39=%d 40=%d", n39, n40)
+		t.Fatalf("expected buildings on both sides of roadless threshold: 39=%d 40=%d", n39, n40)
 	}
 	// Old fillRate path jumped ~16 → ~256 island lots; Game.hx density must not.
 	if n40 > n39*3 {
@@ -62,11 +62,11 @@ func TestFlashDisplaySideMatchesGameHxTruncation(t *testing.T) {
 	if got := flashDisplaySide(1); got != 6 {
 		t.Fatalf("pop=1 displaySide=%d, want 6 (Townzzy / Game.hx Std.int)", got)
 	}
-	if peonDalleGridFor(1) != 6 {
-		t.Fatalf("pop=1 dalle grid=%d, want 6×6 plates", peonDalleGridFor(1))
+	if plateGridFor(1) != 6 {
+		t.Fatalf("pop=1 dalle grid=%d, want 6×6 plates", plateGridFor(1))
 	}
-	if displaySide != 6 {
-		t.Fatalf("PNG crop displaySide=%d, want 6 so pop=1 is not capped", displaySide)
+	if displaySide != 25 {
+		t.Fatalf("PNG field displaySide=%d, want 25 (Game.hx grow cap)", displaySide)
 	}
 }
 
@@ -80,7 +80,7 @@ func TestUpdateLibHouseGates(t *testing.T) {
 	if !updateLibHouseUnlocked(libHouse2, csPopBig, 0) {
 		t.Fatal("mcHouse2 unlocked at POP_BIG")
 	}
-	if !updateLibHouseUnlocked(libHouse2, 0, popTierNormal) {
+	if !updateLibHouseUnlocked(libHouse2, 0, houseBandPop) {
 		t.Fatal("mcHouse2 unlocked by city pop fallback")
 	}
 	if updateLibHouseUnlocked(libHouse3, csPopHuge-1, 0) {
@@ -89,8 +89,23 @@ func TestUpdateLibHouseGates(t *testing.T) {
 	if !updateLibHouseUnlocked(libHouse3, csPopHuge, 0) {
 		t.Fatal("mcHouse3 unlocked at POP_HUGE")
 	}
-	if !updateLibHouseUnlocked(libHouse3, 0, popTierHuge) {
+	if !updateLibHouseUnlocked(libHouse3, 0, cityHugePop) {
 		t.Fatal("mcHouse3 unlocked by city pop fallback")
+	}
+}
+
+func TestGenMapPopKeepsDepositsOnceFarmsUnlock(t *testing.T) {
+	low := genMapPop(1, newMapRNG("testcity"))
+	if low.max != 0 {
+		t.Fatalf("pop=1 densityMax=%d, want 0 (empty initial town)", low.max)
+	}
+	mid := genMapPop(3, newMapRNG("testcity"))
+	if mid.max == 0 {
+		t.Fatal("pop=3 should keep genMapPop deposits so neighbor farms can spawn")
+	}
+	high := genMapPop(40, newMapRNG("testcity"))
+	if high.max == 0 {
+		t.Fatal("pop=40 should have blurred density")
 	}
 }
 
