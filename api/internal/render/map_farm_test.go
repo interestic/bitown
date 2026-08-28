@@ -750,14 +750,11 @@ func TestYellowFarmNotUnderBuildingSprites(t *testing.T) {
 			if !ok {
 				continue
 			}
-			topX, topY := isoCell(lot.x, lot.y)
-			footX, footY := topX, topY+isoTileH-farmGrassLift
-			footX = applyWestMiniStampNudge(footX, lot.x, lot.y)
-			footX = applyNorthMiniStampNudgeX(footX, lot.x, lot.y)
-			footX = applyEastMiniStampNudge(footX, lot.x, lot.y)
-			footY = applyNorthMiniStampNudge(footY, lot.x, lot.y)
-			footY = applySEMiniStampNudge(footY, lot.x, lot.y)
-			footY = applyEWMiniStampNudge(footY, lot.x, lot.y)
+			stamp, _ := ctx.atlas.StampForKey(key)
+			if stamp.Kind == StampKindMiniFoot {
+				continue
+			}
+			footX, footY := buildingStampFoot(ctx.atlas, key, lot.x, lot.y, ctx.roadless)
 			dstX, dstY := footX-rect.AnchorX, footY-rect.AnchorY
 			for sy := 0; sy < rect.H; sy++ {
 				py := dstY + sy

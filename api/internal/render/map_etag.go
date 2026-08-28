@@ -12,7 +12,7 @@ import (
 	"github.com/interestic/bitown/internal/citycore"
 )
 
-const mapRendererVersion = "map-v45"
+const mapRendererVersion = "map-v47"
 
 var (
 	ErrAtlasNotFound            = errors.New("sprites-v1 atlas directory not found")

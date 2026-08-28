@@ -45,6 +45,7 @@ type catalogEntry struct {
 	Tier       *int          `json:"tier,omitempty"`
 	Unlock     *FolderUnlock `json:"unlock,omitempty"`
 	LibraryRef *LibraryRef   `json:"library_ref,omitempty"`
+	Stamp      *StampMeta    `json:"stamp,omitempty"`
 }
 
 // LibraryRef is the mcHouse1/2/3 ShowFrame mapping from the SWF graph (#82).
@@ -97,7 +98,9 @@ type Atlas struct {
 	UnlockByFolder map[string]FolderUnlock
 	// LibraryByFolder maps pool folders to mcHouse library_ref (updateLib).
 	LibraryByFolder map[string]LibraryRef
-	VariantSuffix   func(seed uint32) string
+	// StampByFolder maps pool folders to logical stamp / footprint contract (# placement B).
+	StampByFolder map[string]StampMeta
+	VariantSuffix func(seed uint32) string
 	sourceDir       string
 	revision        string
 }
@@ -210,6 +213,7 @@ func loadAtlasFromRoot(base string, root *os.Root, revision string) (*Atlas, err
 		TierByFolder:    catalog.tierByFolder,
 		UnlockByFolder:  catalog.unlockByFolder,
 		LibraryByFolder: catalog.libraryByFolder,
+		StampByFolder:   catalog.stampByFolder,
 		sourceDir:       base,
 		revision:        revision,
 		VariantSuffix: func(seed uint32) string {

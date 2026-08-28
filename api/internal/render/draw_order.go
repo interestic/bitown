@@ -22,6 +22,7 @@ const (
 	objectRoad objectKind = iota
 	objectPark
 	objectBuilding
+	objectLandmark
 )
 
 // mapDrawOrder returns cell coordinates back-to-front for 2:1 isometric overlap.

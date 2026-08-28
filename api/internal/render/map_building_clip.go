@@ -12,7 +12,8 @@ import (
 const buildingGroundBand = plateGrassLift
 
 type roadMaskData struct {
-	mask []bool
+	mask      []bool // cellRoad iso diamonds
+	crossMask []bool // CROSS intersection — always clip building ground band
 }
 
 func buildRoadMaskDataOffset(grid cityGrid, dy int) roadMaskData {
@@ -25,7 +26,68 @@ func buildRoadMaskDataOffset(grid cityGrid, dy int) roadMaskData {
 			markIsoDiamondMaskOffset(mask, mapWidth, x, y, 1, dy)
 		}
 	}
-	return roadMaskData{mask: mask}
+	return roadMaskData{
+		mask:      mask,
+		crossMask: make([]bool, mapWidth*mapHeight),
+	}
+}
+
+// crossRoadMaskRadius is the chebyshev radius around CROSS foot used only for
+// building ground-band clip (not occupancy — yards ring via foot 3).
+const crossRoadMaskRadius = 1
+
+// buildRoadMaskDataWithCross extends the arterial grid mask with CROSS foot
+// diamonds and arm corridors so building placement matches painted asphalt.
+func buildRoadMaskDataWithCross(grid cityGrid, cross [][]uint8, dy int) roadMaskData {
+	data := buildRoadMaskDataOffset(grid, dy)
+	markCrossMask(&data, cross, dy)
+	return data
+}
+
+func markCrossMask(data *roadMaskData, cross [][]uint8, dy int) {
+	if data == nil || len(cross) == 0 {
+		return
+	}
+	for sy := 0; sy < len(cross); sy++ {
+		for sx := 0; sx < len(cross[sy]); sx++ {
+			if cross[sy][sx] == 0 {
+				continue
+			}
+			cx, cy := squareCrossFootCell(sx, sy)
+			for oy := -crossRoadMaskRadius; oy <= crossRoadMaskRadius; oy++ {
+				for ox := -crossRoadMaskRadius; ox <= crossRoadMaskRadius; ox++ {
+					markRoadMaskCell(data.crossMask, cx+ox, cy+oy, dy)
+				}
+			}
+		}
+	}
+}
+
+func squareCrossFootCell(sx, sy int) (x, y int) {
+	return sx*squareSide + crossStampFootLocal, sy*squareSide + crossStampFootLocal
+}
+
+func markRoadMaskCell(mask []bool, x, y, dy int) {
+	if x < 0 || y < 0 || x >= mapCols || y >= mapRows {
+		return
+	}
+	markIsoDiamondMaskOffset(mask, mapWidth, x, y, 1, dy)
+}
+
+// lotOverlapsRoadMask reports whether a lot cell sits on painted road asphalt
+// (arterial grid or CROSS arms), not just on the logical cellRoad grid.
+func lotOverlapsRoadMask(roads roadMaskData, x, y int) bool {
+	topX, topY := isoCell(x, y)
+	samples := []struct{ px, py int }{
+		{topX, topY + isoTileH/2 - roadGrassLift},
+		{topX, topY + isoTileH - roadGrassLift},
+	}
+	for _, s := range samples {
+		if roadMaskedAt(roads.mask, s.px, s.py) || roadMaskedAt(roads.crossMask, s.px, s.py) {
+			return true
+		}
+	}
+	return false
 }
 
 // plateGrass is the grass-top mask of the plate island (roadless or arterial).
@@ -180,7 +242,14 @@ func pointInIsoBlockOffset(px, py, x0, y0, n, dy int, expand float64) bool {
 // lift. Upper facade may overhang neighboring lots (Flash sprites are wider
 // than one tile); forcing a lot-column clip sliced apartment walls in half.
 func skipBuildingPixelOnRoad(roads roadMaskData, footY, px, py, lotX, lotY int) bool {
-	if !inBuildingGroundBand(footY, py) || !roadMaskedAt(roads.mask, px, py) {
+	if !inBuildingGroundBand(footY, py) {
+		return false
+	}
+	// Iso lot diamonds overlap at CROSS — clip intersection asphalt unconditionally.
+	if roadMaskedAt(roads.crossMask, px, py) {
+		return true
+	}
+	if !roadMaskedAt(roads.mask, px, py) {
 		return false
 	}
 	return !pointInIsoDiamond(px, py, lotX, lotY)

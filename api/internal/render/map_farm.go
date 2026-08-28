@@ -15,7 +15,7 @@ var farmMiniKeys = []string{
 	"sprites/DefineSprite_521/2_v00.png", // grass fill
 	"sprites/DefineSprite_521/3_v00.png", // soil furrow
 	"sprites/DefineSprite_521/4_v00.png", // quad mix
-	// 521/5 (grass+hut+yellow) omitted — baked hut/tree reads as objects on fields (#113)
+	// 521/5 (grass+hut+yellow) omitted from farms (#113); drawn via parkDecoKeys.
 	"sprites/DefineSprite_503/1_v00.png", // yellow furrow EW
 }
 
@@ -74,6 +74,20 @@ const ewMiniStampNudgeY = 5
 // (negative = toward CROSS / plate center; sandbox map-base #15).
 const eastMiniStampNudgeX = -1
 
+// Arterial yard stamp extras (sandbox map-base #17 + #20 mid-rise fine → core).
+// Applied after the shared mini nudges so mid-rise yards clear CROSS / arterial
+// axes. Screen space: +Y = down (viewer), −Y = 上, −X = 左.
+// #20 refined #17 on DefineSprite_493 mid-rise around a plate CROSS.
+const arterialYardLiftY = plateGrassLift // +20 after grass-top foot
+const arterialSENudgeX = -2              // 下象限
+const arterialSENudgeY = -2              // 下象限
+const arterialNWNudgeX = -6              // 上象限
+const arterialNWNudgeY = -11             // 上象限
+const arterialSWNudgeX = -11             // 左象限
+const arterialSWNudgeY = -1              // 左象限
+const arterialNENudgeX = -4              // 右象限
+const arterialNENudgeY = -1              // 右象限
+
 // lotInSquareMini reports whether (x,y) sits in mini i's 4×4 block.
 func lotInSquareMini(x, y, i int) bool {
 	if x < 0 || y < 0 || x >= mapCols || y >= mapRows {
@@ -131,6 +145,40 @@ func applyEastMiniStampNudge(footX, lotX, lotY int) int {
 		return footX + eastMiniStampNudgeX
 	}
 	return footX
+}
+
+// applyArterialYardStampNudgeForMini adds sandbox #17/#20 yard lift + per-mini fine
+// nudges by mini index. Use when the caller already knows the mini (map-base lab
+// plates are not always aligned to the global 10×10 square grid).
+func applyArterialYardStampNudgeForMini(footX, footY, mini int) (int, int) {
+	footY += arterialYardLiftY
+	switch mini {
+	case miniSE:
+		footX += arterialSENudgeX
+		footY += arterialSENudgeY
+	case miniNW:
+		footX += arterialNWNudgeX
+		footY += arterialNWNudgeY
+	case miniSW:
+		footX += arterialSWNudgeX
+		footY += arterialSWNudgeY
+	case miniNE:
+		footX += arterialNENudgeX
+		footY += arterialNENudgeY
+	}
+	return footX, footY
+}
+
+// applyArterialYardStampNudge adds sandbox #17/#20 yard lift + per-mini fine
+// nudges. Call only for arterial (non-roadless) building stamps.
+func applyArterialYardStampNudge(footX, footY, lotX, lotY int) (int, int) {
+	for _, mi := range []int{miniSE, miniNW, miniSW, miniNE} {
+		if lotInSquareMini(lotX, lotY, mi) {
+			return applyArterialYardStampNudgeForMini(footX, footY, mi)
+		}
+	}
+	footY += arterialYardLiftY
+	return footX, footY
 }
 
 // miniSquareFoot is the SE cell of the 4×4 mini (ox+3, oy+3).
