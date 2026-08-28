@@ -326,7 +326,7 @@ func TestPickBuildingKeyForLotHighPopCanUseHighTiers(t *testing.T) {
 
 	city := &citycore.City{Slug: "growth-high", Pop: 500, Ind: 50, Com: 50, Sec: 300, Env: 400}
 	cx, cy := plateIslandCenter(city.Pop.Int())
-	var highTier, landmarks, samples int
+	var highTier, samples int
 	for seed := uint32(0); seed < 256; seed++ {
 		key := atlas.PickBuildingKeyForLot(city, TagResidential, cx, cy, seed)
 		if key == "" {
@@ -339,18 +339,12 @@ func TestPickBuildingKeyForLotHighPopCanUseHighTiers(t *testing.T) {
 		if tier >= 2 {
 			highTier++
 		}
-		if frameBelongsToTag(key, atlas.BasesForTag(TagLandmark)) {
-			landmarks++
-		}
 	}
 	if samples < 32 {
 		t.Fatalf("expected picks, got %d", samples)
 	}
 	if highTier == 0 {
 		t.Fatal("high pop should sometimes pick tier>=2 buildings")
-	}
-	if landmarks == 0 {
-		t.Fatal("high pop+sectors should sometimes mix landmark frames")
 	}
 }
 

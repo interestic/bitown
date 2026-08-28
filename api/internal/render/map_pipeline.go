@@ -25,6 +25,8 @@ type mapRenderCtx struct {
 	roadLift     int
 	roadStamps   []roadStamp
 	roadCross    [][]uint8
+	landmarks    []landmarkStamp
+	landmarkSq   map[[2]int]struct{}
 }
 
 func newMapRenderCtx(city *citycore.City, atlas *Atlas) mapRenderCtx {
@@ -46,7 +48,7 @@ func newMapRenderCtx(city *citycore.City, atlas *Atlas) mapRenderCtx {
 		grid:       roads.grid,
 		occupancy:  occupancy,
 		order:      mapDrawOrder(),
-		roads:      buildRoadMaskDataOffset(roads.grid, -roadLift),
+		roads:      buildRoadMaskDataWithCross(roads.grid, roads.cross, -roadLift),
 		roadless:   roadless,
 		pop:        pop,
 		dens:       dens,
@@ -57,6 +59,7 @@ func newMapRenderCtx(city *citycore.City, atlas *Atlas) mapRenderCtx {
 	}
 	if atlas != nil {
 		ctx.buildingKeys = assignBuildingKeys(atlas, city, occupancy, dens.max)
+		ctx.landmarks, ctx.landmarkSq = planSquareLandmarks(city, atlas, dens)
 	}
 	ctx.grass = buildPlateGrass(pop)
 	return ctx
@@ -86,6 +89,8 @@ func drawMapFloor(img *image.RGBA, ctx mapRenderCtx) {
 		drawGroundBlocks(img, ctx.atlas, ctx.slug, ctx.roadless, ctx.pop)
 		// Townzzy: empty mini-squares get farm after plates, before roads/buildings.
 		drawFarmBlocks(img, ctx)
+		// Storybook ground deco (tennis, pebbles) on vacant grass — not park objects.
+		drawGroundDecoBlocks(img, ctx)
 		if !ctx.roadless {
 			drawAtlasRoadSprites(img, ctx)
 		}
@@ -94,10 +99,8 @@ func drawMapFloor(img *image.RGBA, ctx mapRenderCtx) {
 	}
 }
 
-// drawAtlasRoadSprites stamps one mcRoad per live square axis (Game.hx size=3:
-// 1 edge = 1 part). Floor pass is before buildings, so stamps are not clipped
-// to mini-cells — the full ~133px strip can span the square edge.
-func drawAtlasRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
+// drawAtlasArterialRoadSprites stamps mcRoad axes on the floor pass (before buildings).
+func drawAtlasArterialRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
 	if ctx.atlas == nil {
 		return
 	}
@@ -112,7 +115,12 @@ func drawAtlasRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
 		// Clip at the same lift as the foot (catalog: dalle-top diamond).
 		_ = ctx.atlas.drawRoadOnSquare(img, key, footX+ox, footY+oy, st.sx, st.sy, -ctx.roadLift, 0.22, ctx.grass)
 	}
-	if len(ctx.roadCross) == 0 {
+}
+
+// drawAtlasCrossRoadSprites stamps DefineSprite_705 after buildings so junction
+// asphalt stays visible when adjacent yards overlap the intersection in screen space.
+func drawAtlasCrossRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
+	if ctx.atlas == nil || len(ctx.roadCross) == 0 {
 		return
 	}
 	for sy := 0; sy < displaySide && sy < len(ctx.roadCross); sy++ {
@@ -125,12 +133,16 @@ func drawAtlasRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
 			if key == "" {
 				continue
 			}
-			// CROSS foot: local 7 + screen nudgeY (sandbox map-base contract).
-			// Arterials stay on SE foot so strip tips still meet square edges.
 			footX, footY := squareCrossFoot(sx, sy, -ctx.roadLift)
 			_ = ctx.atlas.drawRoadOnSquare(img, key, footX, footY, sx, sy, -ctx.roadLift, 0.12, ctx.grass)
 		}
 	}
+}
+
+// drawAtlasRoadSprites stamps arterials then CROSS (legacy single-pass helper).
+func drawAtlasRoadSprites(img *image.RGBA, ctx mapRenderCtx) {
+	drawAtlasArterialRoadSprites(img, ctx)
+	drawAtlasCrossRoadSprites(img, ctx)
 }
 
 // squareRoadFoot is the SE mini-cell of the square, lifted onto plate grass.
@@ -152,6 +164,59 @@ const crossStampNudgeY = -13
 func squareCrossFoot(sx, sy, dy int) (footX, footY int) {
 	footX, footY = cellRoadFoot(sx*squareSide+crossStampFootLocal, sy*squareSide+crossStampFootLocal, dy)
 	return footX, footY + crossStampNudgeY
+}
+
+// plateCrossFootCell is the map cell for the plate-center CROSS stamp (local 7,7).
+// Building feet must avoid this cell whenever arterials are drawn, even if the
+// CROSS sprite is not painted (stage 21 left/back plates).
+func plateCrossFootCell(bx, by int) (x, y int) {
+	return bx + crossStampFootLocal, by + crossStampFootLocal
+}
+
+func lotOnPlateCrossFoot(x, y, bx, by int) bool {
+	cx, cy := plateCrossFootCell(bx, by)
+	return x == cx && y == cy
+}
+
+// lotOnCrossFoot reports whether (x,y) is the CROSS stamp foot (local 7,7).
+func lotOnCrossFoot(x, y int, cross [][]uint8) bool {
+	return crossFootChebyshev(x, y, cross) == 0
+}
+
+// lotReservedForCross reports whether (x,y) is the CROSS asphalt foot cell only.
+// Yards ring around it via arterial_yard foot 3 on the other minis (sandbox contract).
+func lotReservedForCross(x, y int, cross [][]uint8) bool {
+	return lotOnCrossFoot(x, y, cross)
+}
+
+// crossFootChebyshev returns chebyshev distance from (x,y) to the CROSS foot of
+// its square, or -1 when the square has no planned CROSS.
+func crossFootChebyshev(x, y int, cross [][]uint8) int {
+	if len(cross) == 0 {
+		return -1
+	}
+	sx := x / squareSide
+	sy := y / squareSide
+	if sx < 0 || sy < 0 || sy >= len(cross) || sx >= len(cross[sy]) {
+		return -1
+	}
+	if cross[sy][sx] == 0 {
+		return -1
+	}
+	cx := sx*squareSide + crossStampFootLocal
+	cy := sy*squareSide + crossStampFootLocal
+	dx := x - cx
+	if dx < 0 {
+		dx = -dx
+	}
+	dy := y - cy
+	if dy < 0 {
+		dy = -dy
+	}
+	if dx > dy {
+		return dx
+	}
+	return dy
 }
 
 func cellRoadFoot(x, y, dy int) (footX, footY int) {
@@ -215,6 +280,9 @@ func collectMapObjects(ctx mapRenderCtx) []mapObject {
 		}
 		switch lot.use {
 		case lotPark:
+			if squareHasLandmark(ctx.landmarkSq, cell.x, cell.y) {
+				continue
+			}
 			key := ""
 			height := isoTileH
 			if ctx.atlas != nil {
@@ -228,6 +296,9 @@ func collectMapObjects(ctx mapRenderCtx) []mapObject {
 				seed: cellSeed, key: key, kind: objectPark,
 			})
 		case lotBuilding:
+			if squareHasLandmark(ctx.landmarkSq, cell.x, cell.y) {
+				continue
+			}
 			key := ""
 			height := 14 // fallback building rect height
 			if ctx.atlas != nil {
@@ -241,6 +312,18 @@ func collectMapObjects(ctx mapRenderCtx) []mapObject {
 				seed: cellSeed, tag: lot.tag, key: key, kind: objectBuilding,
 			})
 		}
+	}
+	for _, lm := range ctx.landmarks {
+		height := isoTileH
+		if ctx.atlas != nil {
+			if h := ctx.atlas.frameHeight(lm.key); h > 0 {
+				height = h
+			}
+		}
+		objs = append(objs, mapObject{
+			x: lm.x, y: lm.y, depth: lm.x + lm.y, height: height,
+			key: lm.key, tag: TagLandmark, kind: objectLandmark,
+		})
 	}
 	sortMapObjects(objs)
 	return objs
@@ -259,14 +342,17 @@ func paintMapObjects(img *image.RGBA, ctx mapRenderCtx, objs []mapObject, paint 
 				_ = ctx.atlas.drawFrameOnGrassTop(img, obj.key, footX, footY, ctx.grass)
 			}
 		case objectBuilding:
-			// overlayFoot already applied plate lift; add mini stamp nudges
-			// from sandbox map-base (west/north/SE/EW/east).
-			footX = applyWestMiniStampNudge(footX, obj.x, obj.y)
-			footX = applyNorthMiniStampNudgeX(footX, obj.x, obj.y)
-			footX = applyEastMiniStampNudge(footX, obj.x, obj.y)
-			footY = applyNorthMiniStampNudge(footY, obj.x, obj.y)
-			footY = applySEMiniStampNudge(footY, obj.x, obj.y)
-			footY = applyEWMiniStampNudge(footY, obj.x, obj.y)
+			if ctx.atlas != nil && obj.key != "" {
+				footX, footY = buildingStampFoot(ctx.atlas, obj.key, obj.x, obj.y, ctx.roadless)
+			} else if !ctx.roadless {
+				footX = applyWestMiniStampNudge(footX, obj.x, obj.y)
+				footX = applyNorthMiniStampNudgeX(footX, obj.x, obj.y)
+				footX = applyEastMiniStampNudge(footX, obj.x, obj.y)
+				footY = applyNorthMiniStampNudge(footY, obj.x, obj.y)
+				footY = applySEMiniStampNudge(footY, obj.x, obj.y)
+				footY = applyEWMiniStampNudge(footY, obj.x, obj.y)
+				footX, footY = applyArterialYardStampNudge(footX, footY, obj.x, obj.y)
+			}
 			if ctx.atlas != nil && obj.key != "" {
 				if ctx.roadless {
 					if ctx.atlas.drawFrameOnGrassTop(img, obj.key, footX, footY, ctx.grass) {
@@ -281,6 +367,12 @@ func paintMapObjects(img *image.RGBA, ctx mapRenderCtx, objs []mapObject, paint 
 				continue
 			}
 			paint(img, obj.seed, obj.tag, footX, footY, obj.x, obj.y, ctx.roads)
+		case objectLandmark:
+			if ctx.atlas == nil || obj.key == "" {
+				continue
+			}
+			footX, footY = landmarkStampFoot(obj.x, obj.y)
+			_ = ctx.atlas.drawFrameAtFoot(img, obj.key, footX, footY)
 		}
 	}
 }

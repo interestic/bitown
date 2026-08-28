@@ -24,7 +24,7 @@
     "sprites/DefineSprite_391": "exclude",
     "sprites/DefineSprite_557": "exclude",
     "sprites/DefineSprite_545": "exclude",
-    "sprites/DefineSprite_281": "exclude",
+    "sprites/DefineSprite_281": "industrial",
     "sprites/DefineSprite_679": "exclude",
     "sprites/DefineSprite_616": "ground",
     "sprites/DefineSprite_381": "residential",
@@ -51,14 +51,14 @@
     "sprites/DefineSprite_374": "residential",
     "sprites/DefineSprite_688": "exclude",
     "sprites/DefineSprite_487": "exclude",
-    "sprites/DefineSprite_488": "exclude",
+    "sprites/DefineSprite_488": "commercial",
     "sprites/DefineSprite_468": "exclude",
     "sprites/DefineSprite_167": "exclude",
     "sprites/DefineSprite_14": "exclude",
     "sprites/DefineSprite_172": "ground",
     "sprites/DefineSprite_732": "ground",
-    "sprites/DefineSprite_382": "residential",
-    "sprites/DefineSprite_307": "commercial",
+    "sprites/DefineSprite_382": "tree",
+    "sprites/DefineSprite_307": "tree",
     "sprites/DefineSprite_401": "ground",
     "sprites/DefineSprite_111": "tree",
     "sprites/DefineSprite_213": "exclude",
@@ -98,7 +98,7 @@
     "sprites/DefineSprite_699": "road",
     "sprites/DefineSprite_705": "road",
     "sprites/DefineSprite_724": "road",
-    "sprites/DefineSprite_123": "residential",
+    "sprites/DefineSprite_123": "exclude",
     "sprites/DefineSprite_249": "residential",
     "sprites/DefineSprite_250": "commercial",
     "sprites/DefineSprite_257": "commercial",
@@ -113,17 +113,102 @@
     "sprites/DefineSprite_598": "landmark",
     "sprites/DefineSprite_299": "landmark",
     "sprites/DefineSprite_690": "commercial",
-    "sprites/DefineSprite_610": "exclude"
+    "sprites/DefineSprite_610": "exclude",
+    "sprites/DefineSprite_209": "landmark",
+    "sprites/DefineSprite_211": "landmark",
+    "sprites/DefineSprite_405": "ground",
+    "sprites/DefineSprite_492": "commercial",
+    "sprites/DefineSprite_496": "commercial",
+    "sprites/DefineSprite_500": "commercial",
+    "sprites/DefineSprite_633": "commercial",
+    "sprites/DefineSprite_663": "commercial",
+    "sprites/DefineSprite_747": "landmark"
   },
   "tiers": {
     "sprites/DefineSprite_633": 3,
     "sprites/DefineSprite_249": 0
   },
+  "stamps": {
+    "sprites/DefineSprite_692": {
+      "kind": "landmark_center",
+      "footprint_minis": 16,
+      "cross_reserve": true,
+      "nudge_profile": "landmark",
+      "foot_extra_y": -10
+    },
+    "sprites/DefineSprite_269": {
+      "kind": "mini_foot",
+      "footprint_minis": 1,
+      "cross_reserve": false,
+      "nudge_profile": "default",
+      "foot_extra_y": 15
+    },
+    "sprites/DefineSprite_295": {
+      "kind": "mini_foot",
+      "footprint_minis": 1,
+      "cross_reserve": false,
+      "nudge_profile": "default"
+    },
+    "sprites/DefineSprite_374": {
+      "kind": "mini_foot",
+      "footprint_minis": 1,
+      "cross_reserve": false,
+      "nudge_profile": "default"
+    },
+    "sprites/DefineSprite_493": {
+      "kind": "arterial_yard",
+      "footprint_minis": 1,
+      "cross_reserve": true,
+      "nudge_profile": "arterial_yard"
+    },
+    "sprites/DefineSprite_522_mcHouse2": {
+      "kind": "arterial_yard",
+      "footprint_minis": 1,
+      "cross_reserve": true,
+      "nudge_profile": "arterial_yard"
+    },
+    "sprites/DefineSprite_358": {
+      "kind": "arterial_yard",
+      "footprint_minis": 1,
+      "cross_reserve": true,
+      "nudge_profile": "overlap_yard"
+    },
+    "sprites/DefineSprite_200": {
+      "kind": "arterial_yard",
+      "footprint_minis": 1,
+      "cross_reserve": true,
+      "nudge_profile": "overlap_yard"
+    }
+  },
+  "unlocks": {
+    "sprites/DefineSprite_361": { "min_env": 80 },
+    "sprites/DefineSprite_382": {}
+  },
+  "frame_tags": {
+    "sprites/DefineSprite_295/5": "exclude",
+    "sprites/DefineSprite_522_mcHouse2/3": "ground",
+    "sprites/DefineSprite_411_mcHouse1/17": "ground",
+    "sprites/DefineSprite_411_mcHouse1/16": "ground",
+    "sprites/DefineSprite_411_mcHouse1/15": "tree",
+    "sprites/DefineSprite_411_mcHouse1/14": "residential",
+    "sprites/DefineSprite_411_mcHouse1/13": "residential",
+    "sprites/DefineSprite_411_mcHouse1/8": "tree",
+    "sprites/DefineSprite_411_mcHouse1/7": "tree",
+    "sprites/DefineSprite_411_mcHouse1/5": "industrial",
+    "sprites/DefineSprite_411_mcHouse1/4": "residential",
+    "sprites/DefineSprite_411_mcHouse1/1": "residential"
+  },
   "notes": {
     "low_pop_tier0": "Only a handful of residential/commercial bases land in tier 0 from bbox heuristics. Candidates to promote later from exclude/ground if peon maps look too empty of hut-scale art: review exclude tall-thin rejects; do not auto-promote UI.",
     "tall_tier3": "bbox_h>=80 is tier 3 (突出した高さ). DefineSprite_633 is the 93px residential tower; keep it at 3 so pop=120 outer lots (maxTier 2) do not flood with skyscrapers.",
-    "more_houses_49": "House-cluster DefineSprite_123 (multi-house on one lot) + tiny 249 retagged residential. Mid-rise offices stay commercial. Folder-weighted pick + 50px lot width restore classic houses.",
+    "more_houses_49": "Tiny 249 retagged residential for hut-scale lots. DefineSprite_123 is the mcLoading construction timeline (115 frames), not a house cluster — keep exclude and use frontend/public/loading-build.webp.",
+    "loading_build_webp": "frontend/public/loading-build.webp is built from DefineSprite_123/1–115 via scripts/build_loading_webp.py (construction rise used by mcLoading).",
     "midrise_band": "Commercial heuristic keeps tier 2 for bbox_h 52..79 so big pop still has mid-rise after tall→3. Pick is tier-first then folder-uniform so tall folder count cannot drown mid-rise.",
-    "champs_farm_89": "DefineSprite_401 / 521 are Townzzy champs floor clips (auth_big_champs_gfx / auth_champs_gfx). Tag ground so farm pickers (#86) still use them while the commercial building pool does not."
+    "champs_farm_89": "DefineSprite_401 / 521 are Townzzy champs floor clips (auth_big_champs_gfx / auth_champs_gfx). Tag ground so farm pickers (#86) still use them while the commercial building pool does not.",
+    "tree_grove_307": "DefineSprite_307 (mcHouse1 frame 7) is a tree grove clip, not a shop. Keep tag tree so Storybook and park scatter do not treat it as commercial.",
+    "tree_clip_382": "DefineSprite_382 (mcHouse1 frame 15) is small tree/pine clips, not houses. Keep tag tree; no min_env so park scatter can use them (they used to spawn as tier-0 residential).",
+    "exclude_promote_storybook": "Hand-promoted former exclude modules for Storybook catalog tags (226/235/242/250/257 commercial; 209/211/561/598/747 landmark; 277/281/285/294 industrial; 405 ground; 488/492/496/500/633/663 commercial). pool_eligible stays false (#82); atlas building BasesForTag still filters to building_bases.",
+    "mchouse_frame_tags": "mcHouse1/2 spawn_library frames are Storybook composites of library children. frame_tags retargets mixed frames (ground/tree/residential/industrial) without changing folder-level commercial tag or map spawn pool.",
+    "stamp_metadata": "stamps.* is the logical footprint + foot contract per folder (docs/map-building-placement.md). Heuristic defaults apply when omitted; stage 21 lab families are hand-tuned here."
   }
 }

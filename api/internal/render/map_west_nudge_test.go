@@ -61,3 +61,36 @@ func TestApplySEEWEastMiniStampNudges(t *testing.T) {
 		t.Fatalf("NW must not east-nudge: got %d", got)
 	}
 }
+
+func TestApplyArterialYardStampNudge(t *testing.T) {
+	if arterialYardLiftY != plateGrassLift {
+		t.Fatalf("arterialYardLiftY=%d, want plateGrassLift=%d", arterialYardLiftY, plateGrassLift)
+	}
+	bx, by := 20, 20
+	ox, oy := miniSquareOrigin(bx, by, miniSE)
+	sx, sy := miniHutFoot(ox, oy, 0, false)
+	fx, fy := applyArterialYardStampNudge(100, 100, sx, sy)
+	if fx != 100+arterialSENudgeX || fy != 100+arterialYardLiftY+arterialSENudgeY {
+		t.Fatalf("SE: got (%d,%d), want (%d,%d)", fx, fy, 100+arterialSENudgeX, 100+arterialYardLiftY+arterialSENudgeY)
+	}
+	ox, oy = miniSquareOrigin(bx, by, miniNW)
+	nx, ny := miniHutFoot(ox, oy, 0, false)
+	fx, fy = applyArterialYardStampNudge(100, 100, nx, ny)
+	if fx != 100+arterialNWNudgeX || fy != 100+arterialYardLiftY+arterialNWNudgeY {
+		t.Fatalf("NW: got (%d,%d), want (%d,%d)", fx, fy, 100+arterialNWNudgeX, 100+arterialYardLiftY+arterialNWNudgeY)
+	}
+	ox, oy = miniSquareOrigin(bx, by, miniSW)
+	wx, wy := miniHutFoot(ox, oy, 0, false)
+	fx, fy = applyArterialYardStampNudge(100, 100, wx, wy)
+	wantX := 100 + arterialSWNudgeX
+	wantY := 100 + arterialYardLiftY + arterialSWNudgeY
+	if fx != wantX || fy != wantY {
+		t.Fatalf("SW: got (%d,%d), want (%d,%d)", fx, fy, wantX, wantY)
+	}
+	ox, oy = miniSquareOrigin(bx, by, miniNE)
+	ex, ey := miniHutFoot(ox, oy, 0, false)
+	fx, fy = applyArterialYardStampNudge(100, 100, ex, ey)
+	if fx != 100+arterialNENudgeX || fy != 100+arterialYardLiftY+arterialNENudgeY {
+		t.Fatalf("NE: got (%d,%d), want (%d,%d)", fx, fy, 100+arterialNENudgeX, 100+arterialYardLiftY+arterialNENudgeY)
+	}
+}

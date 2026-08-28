@@ -15,6 +15,7 @@ type loadedCatalog struct {
 	tierByFolder    map[string]int
 	unlockByFolder  map[string]FolderUnlock
 	libraryByFolder map[string]LibraryRef
+	stampByFolder   map[string]StampMeta
 }
 
 func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, error) {
@@ -44,6 +45,7 @@ func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, er
 	tierByFolder := make(map[string]int, len(manifest.Entries))
 	unlockByFolder := make(map[string]FolderUnlock, len(manifest.Entries))
 	libraryByFolder := make(map[string]LibraryRef, len(manifest.Entries))
+	stampByFolder := make(map[string]StampMeta, len(manifest.Entries))
 	for _, entry := range manifest.Entries {
 		if entry.Base == "" || entry.Tag == "" {
 			continue
@@ -64,6 +66,9 @@ func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, er
 		}
 		if entry.LibraryRef != nil && entry.LibraryRef.LibraryID > 0 {
 			libraryByFolder[entry.Base] = *entry.LibraryRef
+		}
+		if entry.Stamp != nil && entry.Stamp.Kind != "" {
+			stampByFolder[entry.Base] = *entry.Stamp
 		}
 	}
 
@@ -131,6 +136,7 @@ func loadBuildingsCatalog(root *os.Root, frameBases []string) (loadedCatalog, er
 		tierByFolder:    tierByFolder,
 		unlockByFolder:  unlockByFolder,
 		libraryByFolder: libraryByFolder,
+		stampByFolder:   stampByFolder,
 	}, nil
 }
 
@@ -156,6 +162,7 @@ func filterOversizedSingleLotBuildings(catalog loadedCatalog, frames map[string]
 		tierByFolder:    catalog.tierByFolder,
 		unlockByFolder:  catalog.unlockByFolder,
 		libraryByFolder: catalog.libraryByFolder,
+		stampByFolder:   catalog.stampByFolder,
 	}
 }
 

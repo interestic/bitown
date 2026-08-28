@@ -17,37 +17,39 @@
     "override_file": "sprite_tag_overrides.json wins after heuristics",
     "tier": "0=hut/low \u2026 3=landmark; heuristic from tag+bbox_h (>=80 \u2192 3; commercial 52..79 \u2192 2); optional overrides.tiers",
     "unlock": "min_pop/ind/com/env/sec/tra gates for map placement (#79); optional overrides.unlocks",
+    "stamp": "logical footprint + foot contract per folder; heuristic from tag+bbox; optional overrides.stamps",
     "needed_characters": "JPEXS Needed Characters (transitive PlaceObject graph from FFDec swf2xml)",
     "dependent_characters": "JPEXS Dependent Characters (sprites that instance this clip, transitive)",
     "placeable_hint": "false when other sprites depend on this clip (child module); mc* exports stay true",
     "role": "spawn_library | library_primary | building_module | deco_subpart | standalone | ui | other",
     "pool_eligible": "true only for mcHouse1/2/3 library-frame primaries with a building tag",
     "library_ref": "mcHouse library frame index when role=library_primary",
-    "building_class": "former building tag kept when a module is demoted to exclude"
+    "building_class": "building tag kept when a heuristic module is demoted to exclude; explicit overrides keep tag for Storybook",
+    "frame_tags": "per-frame Storybook retags (sprites/Base/frameId); does not change map spawn pool"
   },
   "counts": {
-    "building": 15,
-    "pool_eligible": 15,
+    "building": 13,
+    "pool_eligible": 13,
     "character": 28,
     "ui": 9,
-    "other": 200,
+    "other": 167,
     "by_tag": {
-      "residential": 6,
-      "industrial": 1,
-      "commercial": 4,
-      "landmark": 4,
+      "residential": 7,
+      "industrial": 6,
+      "commercial": 25,
+      "landmark": 10,
       "road": 5,
-      "tree": 2,
+      "tree": 4,
       "water": 0,
-      "ground": 18,
+      "ground": 19,
       "park": 0,
-      "exclude": 212
+      "exclude": 176
     },
     "by_tier": {
       "0": 6,
-      "1": 1,
-      "2": 3,
-      "3": 5
+      "1": 6,
+      "2": 7,
+      "3": 29
     }
   },
   "building_bases": [
@@ -57,12 +59,10 @@
     "sprites/DefineSprite_269",
     "sprites/DefineSprite_295",
     "sprites/DefineSprite_299",
-    "sprites/DefineSprite_307",
     "sprites/DefineSprite_320",
     "sprites/DefineSprite_358",
     "sprites/DefineSprite_374",
     "sprites/DefineSprite_381",
-    "sprites/DefineSprite_382",
     "sprites/DefineSprite_493",
     "sprites/DefineSprite_501",
     "sprites/DefineSprite_692"
@@ -70,26 +70,59 @@
   "bases_by_tag": {
     "residential": [
       "sprites/DefineSprite_200",
+      "sprites/DefineSprite_249",
+      "sprites/DefineSprite_266",
       "sprites/DefineSprite_267",
       "sprites/DefineSprite_269",
       "sprites/DefineSprite_374",
-      "sprites/DefineSprite_381",
-      "sprites/DefineSprite_382"
+      "sprites/DefineSprite_381"
     ],
     "industrial": [
+      "sprites/DefineSprite_277",
+      "sprites/DefineSprite_281",
+      "sprites/DefineSprite_285",
+      "sprites/DefineSprite_286",
+      "sprites/DefineSprite_294",
       "sprites/DefineSprite_295"
     ],
     "commercial": [
-      "sprites/DefineSprite_307",
+      "sprites/DefineSprite_226",
+      "sprites/DefineSprite_235",
+      "sprites/DefineSprite_242",
+      "sprites/DefineSprite_250",
+      "sprites/DefineSprite_257",
       "sprites/DefineSprite_320",
+      "sprites/DefineSprite_328",
       "sprites/DefineSprite_358",
-      "sprites/DefineSprite_493"
+      "sprites/DefineSprite_411_mcHouse1",
+      "sprites/DefineSprite_415",
+      "sprites/DefineSprite_428",
+      "sprites/DefineSprite_441",
+      "sprites/DefineSprite_456",
+      "sprites/DefineSprite_469",
+      "sprites/DefineSprite_477",
+      "sprites/DefineSprite_488",
+      "sprites/DefineSprite_492",
+      "sprites/DefineSprite_493",
+      "sprites/DefineSprite_496",
+      "sprites/DefineSprite_500",
+      "sprites/DefineSprite_522_mcHouse2",
+      "sprites/DefineSprite_633",
+      "sprites/DefineSprite_663",
+      "sprites/DefineSprite_690",
+      "sprites/DefineSprite_719"
     ],
     "landmark": [
+      "sprites/DefineSprite_209",
+      "sprites/DefineSprite_211",
       "sprites/DefineSprite_217",
       "sprites/DefineSprite_299",
       "sprites/DefineSprite_501",
-      "sprites/DefineSprite_692"
+      "sprites/DefineSprite_561",
+      "sprites/DefineSprite_598",
+      "sprites/DefineSprite_692",
+      "sprites/DefineSprite_693_mcHouse3",
+      "sprites/DefineSprite_747"
     ],
     "road": [
       "sprites/DefineSprite_696",
@@ -100,7 +133,9 @@
     ],
     "tree": [
       "sprites/DefineSprite_111",
-      "sprites/DefineSprite_361"
+      "sprites/DefineSprite_307",
+      "sprites/DefineSprite_361",
+      "sprites/DefineSprite_382"
     ],
     "water": [],
     "ground": [
@@ -109,6 +144,7 @@
       "sprites/DefineSprite_396",
       "sprites/DefineSprite_399",
       "sprites/DefineSprite_401",
+      "sprites/DefineSprite_405",
       "sprites/DefineSprite_503",
       "sprites/DefineSprite_507",
       "sprites/DefineSprite_510",
@@ -161,44 +197,30 @@
       "sprites/DefineSprite_204",
       "sprites/DefineSprite_206",
       "sprites/DefineSprite_208",
-      "sprites/DefineSprite_209",
       "sprites/DefineSprite_21",
-      "sprites/DefineSprite_211",
       "sprites/DefineSprite_213",
       "sprites/DefineSprite_215",
       "sprites/DefineSprite_22",
       "sprites/DefineSprite_225",
-      "sprites/DefineSprite_226",
       "sprites/DefineSprite_230",
       "sprites/DefineSprite_234",
-      "sprites/DefineSprite_235",
       "sprites/DefineSprite_238",
       "sprites/DefineSprite_240",
-      "sprites/DefineSprite_242",
       "sprites/DefineSprite_248",
-      "sprites/DefineSprite_249",
-      "sprites/DefineSprite_250",
       "sprites/DefineSprite_253",
       "sprites/DefineSprite_256",
-      "sprites/DefineSprite_257",
       "sprites/DefineSprite_260",
       "sprites/DefineSprite_262",
       "sprites/DefineSprite_263",
       "sprites/DefineSprite_265",
-      "sprites/DefineSprite_266",
       "sprites/DefineSprite_272",
       "sprites/DefineSprite_275",
       "sprites/DefineSprite_276",
-      "sprites/DefineSprite_277",
       "sprites/DefineSprite_280",
-      "sprites/DefineSprite_281",
       "sprites/DefineSprite_284",
-      "sprites/DefineSprite_285",
-      "sprites/DefineSprite_286",
       "sprites/DefineSprite_289",
       "sprites/DefineSprite_291",
       "sprites/DefineSprite_293",
-      "sprites/DefineSprite_294",
       "sprites/DefineSprite_298",
       "sprites/DefineSprite_3",
       "sprites/DefineSprite_310",
@@ -208,7 +230,6 @@
       "sprites/DefineSprite_318",
       "sprites/DefineSprite_323",
       "sprites/DefineSprite_326",
-      "sprites/DefineSprite_328",
       "sprites/DefineSprite_331",
       "sprites/DefineSprite_334",
       "sprites/DefineSprite_339",
@@ -223,45 +244,32 @@
       "sprites/DefineSprite_391",
       "sprites/DefineSprite_393",
       "sprites/DefineSprite_395",
-      "sprites/DefineSprite_405",
       "sprites/DefineSprite_409",
       "sprites/DefineSprite_410_mcObs",
-      "sprites/DefineSprite_411_mcHouse1",
-      "sprites/DefineSprite_415",
       "sprites/DefineSprite_418",
       "sprites/DefineSprite_426",
       "sprites/DefineSprite_427",
-      "sprites/DefineSprite_428",
       "sprites/DefineSprite_432",
       "sprites/DefineSprite_435",
       "sprites/DefineSprite_436",
       "sprites/DefineSprite_439",
       "sprites/DefineSprite_440",
-      "sprites/DefineSprite_441",
       "sprites/DefineSprite_448",
       "sprites/DefineSprite_450",
       "sprites/DefineSprite_451",
       "sprites/DefineSprite_453",
       "sprites/DefineSprite_455",
-      "sprites/DefineSprite_456",
       "sprites/DefineSprite_462",
       "sprites/DefineSprite_467",
       "sprites/DefineSprite_468",
-      "sprites/DefineSprite_469",
       "sprites/DefineSprite_475",
       "sprites/DefineSprite_476",
-      "sprites/DefineSprite_477",
       "sprites/DefineSprite_481",
       "sprites/DefineSprite_485",
       "sprites/DefineSprite_487",
-      "sprites/DefineSprite_488",
       "sprites/DefineSprite_491",
-      "sprites/DefineSprite_492",
-      "sprites/DefineSprite_496",
       "sprites/DefineSprite_499",
       "sprites/DefineSprite_5",
-      "sprites/DefineSprite_500",
-      "sprites/DefineSprite_522_mcHouse2",
       "sprites/DefineSprite_527",
       "sprites/DefineSprite_531",
       "sprites/DefineSprite_532",
@@ -276,7 +284,6 @@
       "sprites/DefineSprite_554",
       "sprites/DefineSprite_557",
       "sprites/DefineSprite_559",
-      "sprites/DefineSprite_561",
       "sprites/DefineSprite_566",
       "sprites/DefineSprite_569",
       "sprites/DefineSprite_572",
@@ -290,7 +297,6 @@
       "sprites/DefineSprite_592",
       "sprites/DefineSprite_595",
       "sprites/DefineSprite_597",
-      "sprites/DefineSprite_598",
       "sprites/DefineSprite_610",
       "sprites/DefineSprite_613",
       "sprites/DefineSprite_619",
@@ -298,7 +304,6 @@
       "sprites/DefineSprite_622",
       "sprites/DefineSprite_626",
       "sprites/DefineSprite_631",
-      "sprites/DefineSprite_633",
       "sprites/DefineSprite_637",
       "sprites/DefineSprite_639",
       "sprites/DefineSprite_642",
@@ -308,7 +313,6 @@
       "sprites/DefineSprite_652",
       "sprites/DefineSprite_658",
       "sprites/DefineSprite_661",
-      "sprites/DefineSprite_663",
       "sprites/DefineSprite_676",
       "sprites/DefineSprite_677",
       "sprites/DefineSprite_679",
@@ -316,15 +320,12 @@
       "sprites/DefineSprite_683",
       "sprites/DefineSprite_687",
       "sprites/DefineSprite_688",
-      "sprites/DefineSprite_690",
-      "sprites/DefineSprite_693_mcHouse3",
       "sprites/DefineSprite_698",
       "sprites/DefineSprite_7",
       "sprites/DefineSprite_708_mcHouse",
       "sprites/DefineSprite_710_mcTest",
       "sprites/DefineSprite_712",
       "sprites/DefineSprite_713_mcBg",
-      "sprites/DefineSprite_719",
       "sprites/DefineSprite_721",
       "sprites/DefineSprite_727",
       "sprites/DefineSprite_729",
@@ -334,10 +335,22 @@
       "sprites/DefineSprite_740",
       "sprites/DefineSprite_743",
       "sprites/DefineSprite_745",
-      "sprites/DefineSprite_747",
       "sprites/DefineSprite_78",
       "sprites/DefineSprite_88"
     ]
+  },
+  "frame_tags": {
+    "sprites/DefineSprite_411_mcHouse1/1": "residential",
+    "sprites/DefineSprite_411_mcHouse1/13": "residential",
+    "sprites/DefineSprite_411_mcHouse1/14": "residential",
+    "sprites/DefineSprite_411_mcHouse1/15": "tree",
+    "sprites/DefineSprite_411_mcHouse1/16": "ground",
+    "sprites/DefineSprite_411_mcHouse1/17": "ground",
+    "sprites/DefineSprite_411_mcHouse1/4": "residential",
+    "sprites/DefineSprite_411_mcHouse1/5": "industrial",
+    "sprites/DefineSprite_411_mcHouse1/7": "tree",
+    "sprites/DefineSprite_411_mcHouse1/8": "tree",
+    "sprites/DefineSprite_522_mcHouse2/3": "ground"
   },
   "entries": [
     {
@@ -726,8 +739,7 @@
       ],
       "placeable_hint": false,
       "place_count": 270,
-      "pool_eligible": false,
-      "building_class": "residential"
+      "pool_eligible": false
     },
     {
       "base": "sprites/DefineSprite_126_mcLoading",
@@ -1873,6 +1885,12 @@
       "max_bbox_height": 33,
       "max_bbox_width": 49,
       "tier": 0,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "overlap_yard"
+      },
       "character_id": 200,
       "frame_count": 6,
       "role": "library_primary",
@@ -2077,11 +2095,22 @@
     },
     {
       "base": "sprites/DefineSprite_209",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 12482,
       "max_bbox_height": 153,
       "max_bbox_width": 124,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_sec": 300
+      },
       "character_id": 209,
       "frame_count": 1,
       "role": "building_module",
@@ -2115,7 +2144,7 @@
       "placeable_hint": false,
       "place_count": 4,
       "pool_eligible": false,
-      "building_class": "industrial"
+      "building_class": "landmark"
     },
     {
       "base": "sprites/DefineSprite_21",
@@ -2153,11 +2182,22 @@
     },
     {
       "base": "sprites/DefineSprite_211",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 15809,
       "max_bbox_height": 222,
       "max_bbox_width": 124,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_sec": 300
+      },
       "character_id": 211,
       "frame_count": 1,
       "role": "building_module",
@@ -2187,7 +2227,7 @@
       "placeable_hint": false,
       "place_count": 3,
       "pool_eligible": false,
-      "building_class": "industrial"
+      "building_class": "landmark"
     },
     {
       "base": "sprites/DefineSprite_213",
@@ -2282,6 +2322,12 @@
       "max_bbox_height": 68,
       "max_bbox_width": 49,
       "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
       "unlock": {
         "min_pop": 350,
         "min_sec": 300
@@ -2405,11 +2451,22 @@
     },
     {
       "base": "sprites/DefineSprite_226",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 4466,
       "max_bbox_height": 97,
       "max_bbox_width": 63,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 226,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -2524,11 +2581,22 @@
     },
     {
       "base": "sprites/DefineSprite_235",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 6155,
       "max_bbox_height": 120,
       "max_bbox_width": 73,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 235,
       "frame_count": 1,
       "role": "building_module",
@@ -2626,11 +2694,22 @@
     },
     {
       "base": "sprites/DefineSprite_242",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1560,
       "max_bbox_height": 53,
       "max_bbox_width": 37,
+      "tier": 2,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 120,
+        "min_com": 50
+      },
       "character_id": 242,
       "frame_count": 1,
       "role": "building_module",
@@ -2715,11 +2794,18 @@
     },
     {
       "base": "sprites/DefineSprite_249",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 172,
       "max_bbox_height": 13,
       "max_bbox_width": 21,
+      "tier": 0,
+      "stamp": {
+        "kind": "mini_foot",
+        "footprint_minis": 1,
+        "cross_reserve": false,
+        "nudge_profile": "default"
+      },
       "character_id": 249,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -2764,11 +2850,22 @@
     },
     {
       "base": "sprites/DefineSprite_250",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1329,
       "max_bbox_height": 55,
       "max_bbox_width": 34,
+      "tier": 2,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 120,
+        "min_com": 50
+      },
       "character_id": 250,
       "frame_count": 1,
       "role": "building_module",
@@ -2874,11 +2971,22 @@
     },
     {
       "base": "sprites/DefineSprite_257",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 1259,
       "max_bbox_height": 48,
       "max_bbox_width": 33,
+      "tier": 1,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 40,
+        "min_com": 1
+      },
       "character_id": 257,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -3049,11 +3157,21 @@
     },
     {
       "base": "sprites/DefineSprite_266",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "residential",
       "max_opaque_pixels": 1039,
       "max_bbox_height": 38,
       "max_bbox_width": 37,
+      "tier": 1,
+      "stamp": {
+        "kind": "mini_foot",
+        "footprint_minis": 1,
+        "cross_reserve": false,
+        "nudge_profile": "default"
+      },
+      "unlock": {
+        "min_pop": 40
+      },
       "character_id": 266,
       "frame_count": 1,
       "role": "building_module",
@@ -3101,6 +3219,12 @@
       "max_bbox_height": 74,
       "max_bbox_width": 53,
       "tier": 2,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
       "unlock": {
         "min_pop": 120
       },
@@ -3213,6 +3337,13 @@
       "max_bbox_height": 43,
       "max_bbox_width": 48,
       "tier": 1,
+      "stamp": {
+        "kind": "mini_foot",
+        "footprint_minis": 1,
+        "cross_reserve": false,
+        "nudge_profile": "default",
+        "foot_extra_y": 15
+      },
       "unlock": {
         "min_pop": 40
       },
@@ -3363,11 +3494,22 @@
     },
     {
       "base": "sprites/DefineSprite_277",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 2435,
       "max_bbox_height": 61,
       "max_bbox_width": 75,
+      "tier": 2,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 120,
+        "min_ind": 50
+      },
       "character_id": 277,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -3438,11 +3580,22 @@
     },
     {
       "base": "sprites/DefineSprite_281",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 376,
       "max_bbox_height": 23,
       "max_bbox_width": 29,
+      "tier": 1,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 40,
+        "min_ind": 1
+      },
       "character_id": 281,
       "frame_count": 1,
       "role": "building_module",
@@ -3471,7 +3624,8 @@
       ],
       "placeable_hint": false,
       "place_count": 2,
-      "pool_eligible": false
+      "pool_eligible": false,
+      "building_class": "industrial"
     },
     {
       "base": "sprites/DefineSprite_284",
@@ -3506,11 +3660,22 @@
     },
     {
       "base": "sprites/DefineSprite_285",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 2208,
       "max_bbox_height": 49,
       "max_bbox_width": 76,
+      "tier": 2,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 120,
+        "min_ind": 50
+      },
       "character_id": 285,
       "frame_count": 1,
       "role": "building_module",
@@ -3549,11 +3714,22 @@
     },
     {
       "base": "sprites/DefineSprite_286",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 235,
       "max_bbox_height": 26,
       "max_bbox_width": 20,
+      "tier": 1,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 40,
+        "min_ind": 1
+      },
       "character_id": 286,
       "frame_count": 2,
       "role": "building_module",
@@ -3677,11 +3853,22 @@
     },
     {
       "base": "sprites/DefineSprite_294",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "industrial",
       "max_opaque_pixels": 854,
       "max_bbox_height": 35,
       "max_bbox_width": 33,
+      "tier": 1,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 40,
+        "min_ind": 1
+      },
       "character_id": 294,
       "frame_count": 1,
       "role": "building_module",
@@ -3727,6 +3914,12 @@
       "max_bbox_height": 41,
       "max_bbox_width": 49,
       "tier": 2,
+      "stamp": {
+        "kind": "mini_foot",
+        "footprint_minis": 1,
+        "cross_reserve": false,
+        "nudge_profile": "default"
+      },
       "unlock": {
         "min_pop": 120,
         "min_ind": 50
@@ -3832,6 +4025,12 @@
       "max_bbox_height": 90,
       "max_bbox_width": 48,
       "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
       "unlock": {
         "min_pop": 350,
         "min_sec": 300
@@ -3901,14 +4100,13 @@
     },
     {
       "base": "sprites/DefineSprite_307",
-      "group": "building",
-      "tag": "commercial",
+      "group": "other",
+      "tag": "tree",
       "max_opaque_pixels": 945,
       "max_bbox_height": 39,
       "max_bbox_width": 43,
-      "tier": 0,
       "unlock": {
-        "min_com": 1
+        "min_env": 80
       },
       "character_id": 307,
       "frame_count": 8,
@@ -3952,7 +4150,7 @@
       ],
       "placeable_hint": false,
       "place_count": 17,
-      "pool_eligible": true
+      "pool_eligible": false
     },
     {
       "base": "sprites/DefineSprite_310",
@@ -4128,6 +4326,12 @@
       "max_bbox_height": 56,
       "max_bbox_width": 50,
       "tier": 2,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
       "unlock": {
         "min_pop": 120,
         "min_com": 50
@@ -4256,11 +4460,21 @@
     },
     {
       "base": "sprites/DefineSprite_328",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 732,
       "max_bbox_height": 29,
       "max_bbox_width": 48,
+      "tier": 0,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_com": 1
+      },
       "character_id": 328,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -4572,6 +4786,12 @@
       "max_bbox_height": 39,
       "max_bbox_width": 50,
       "tier": 0,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "overlap_yard"
+      },
       "unlock": {
         "min_com": 1
       },
@@ -4807,6 +5027,12 @@
       "max_bbox_height": 28,
       "max_bbox_width": 41,
       "tier": 0,
+      "stamp": {
+        "kind": "mini_foot",
+        "footprint_minis": 1,
+        "cross_reserve": false,
+        "nudge_profile": "default"
+      },
       "character_id": 374,
       "frame_count": 5,
       "role": "library_primary",
@@ -4951,6 +5177,12 @@
       "max_bbox_height": 30,
       "max_bbox_width": 44,
       "tier": 0,
+      "stamp": {
+        "kind": "mini_foot",
+        "footprint_minis": 1,
+        "cross_reserve": false,
+        "nudge_profile": "default"
+      },
       "character_id": 381,
       "frame_count": 1,
       "role": "library_primary",
@@ -4998,12 +5230,11 @@
     },
     {
       "base": "sprites/DefineSprite_382",
-      "group": "building",
-      "tag": "residential",
+      "group": "other",
+      "tag": "tree",
       "max_opaque_pixels": 344,
       "max_bbox_height": 26,
       "max_bbox_width": 22,
-      "tier": 0,
       "character_id": 382,
       "frame_count": 6,
       "role": "library_primary",
@@ -5045,7 +5276,7 @@
       ],
       "placeable_hint": false,
       "place_count": 7,
-      "pool_eligible": true
+      "pool_eligible": false
     },
     {
       "base": "sprites/DefineSprite_388",
@@ -5321,7 +5552,7 @@
     {
       "base": "sprites/DefineSprite_405",
       "group": "other",
-      "tag": "exclude",
+      "tag": "ground",
       "max_opaque_pixels": 12340,
       "max_bbox_height": 114,
       "max_bbox_width": 166,
@@ -5348,8 +5579,7 @@
       ],
       "placeable_hint": false,
       "place_count": 1,
-      "pool_eligible": false,
-      "building_class": "residential"
+      "pool_eligible": false
     },
     {
       "base": "sprites/DefineSprite_409",
@@ -5447,16 +5677,26 @@
       ],
       "placeable_hint": true,
       "place_count": 25,
-      "pool_eligible": false,
-      "building_class": "residential"
+      "pool_eligible": false
     },
     {
       "base": "sprites/DefineSprite_411_mcHouse1",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 13534,
       "max_bbox_height": 137,
       "max_bbox_width": 212,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 411,
       "exported_name": "mcHouse1",
       "frame_count": 17,
@@ -5737,11 +5977,22 @@
     },
     {
       "base": "sprites/DefineSprite_415",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 6570,
       "max_bbox_height": 192,
       "max_bbox_width": 42,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 415,
       "frame_count": 1,
       "role": "building_module",
@@ -5885,11 +6136,22 @@
     },
     {
       "base": "sprites/DefineSprite_428",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 6550,
       "max_bbox_height": 195,
       "max_bbox_width": 42,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 428,
       "frame_count": 1,
       "role": "building_module",
@@ -6101,11 +6363,22 @@
     },
     {
       "base": "sprites/DefineSprite_441",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 7258,
       "max_bbox_height": 140,
       "max_bbox_width": 62,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 441,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -6322,11 +6595,22 @@
     },
     {
       "base": "sprites/DefineSprite_456",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 6675,
       "max_bbox_height": 199,
       "max_bbox_width": 53,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 456,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -6474,11 +6758,22 @@
     },
     {
       "base": "sprites/DefineSprite_469",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 6507,
       "max_bbox_height": 131,
       "max_bbox_width": 68,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 469,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -6599,11 +6894,22 @@
     },
     {
       "base": "sprites/DefineSprite_477",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 4797,
       "max_bbox_height": 127,
       "max_bbox_width": 42,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 477,
       "frame_count": 1,
       "role": "building_module",
@@ -6652,6 +6958,12 @@
       "max_opaque_pixels": 4967,
       "max_bbox_height": 158,
       "max_bbox_width": 42,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
       "character_id": 481,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -6766,11 +7078,22 @@
     },
     {
       "base": "sprites/DefineSprite_488",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 8399,
       "max_bbox_height": 105,
       "max_bbox_width": 105,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 488,
       "frame_count": 1,
       "role": "building_module",
@@ -6806,7 +7129,8 @@
       ],
       "placeable_hint": false,
       "place_count": 102,
-      "pool_eligible": false
+      "pool_eligible": false,
+      "building_class": "commercial"
     },
     {
       "base": "sprites/DefineSprite_491",
@@ -6844,11 +7168,22 @@
     },
     {
       "base": "sprites/DefineSprite_492",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 12482,
       "max_bbox_height": 153,
       "max_bbox_width": 124,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 492,
       "frame_count": 1,
       "role": "building_module",
@@ -6885,7 +7220,7 @@
       "placeable_hint": false,
       "place_count": 144,
       "pool_eligible": false,
-      "building_class": "industrial"
+      "building_class": "commercial"
     },
     {
       "base": "sprites/DefineSprite_493",
@@ -6895,6 +7230,12 @@
       "max_bbox_height": 208,
       "max_bbox_width": 105,
       "tier": 3,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
       "unlock": {
         "min_pop": 350,
         "min_com": 50
@@ -7080,11 +7421,22 @@
     },
     {
       "base": "sprites/DefineSprite_496",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 12482,
       "max_bbox_height": 153,
       "max_bbox_width": 124,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 496,
       "frame_count": 1,
       "role": "building_module",
@@ -7126,7 +7478,7 @@
       "placeable_hint": false,
       "place_count": 41,
       "pool_eligible": false,
-      "building_class": "industrial"
+      "building_class": "commercial"
     },
     {
       "base": "sprites/DefineSprite_499",
@@ -7189,11 +7541,22 @@
     },
     {
       "base": "sprites/DefineSprite_500",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 12574,
       "max_bbox_height": 153,
       "max_bbox_width": 124,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 500,
       "frame_count": 1,
       "role": "building_module",
@@ -7230,7 +7593,7 @@
       "placeable_hint": false,
       "place_count": 74,
       "pool_eligible": false,
-      "building_class": "industrial"
+      "building_class": "commercial"
     },
     {
       "base": "sprites/DefineSprite_501",
@@ -7240,6 +7603,12 @@
       "max_bbox_height": 155,
       "max_bbox_width": 98,
       "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
       "unlock": {
         "min_pop": 350,
         "min_sec": 300
@@ -7606,11 +7975,22 @@
     },
     {
       "base": "sprites/DefineSprite_522_mcHouse2",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 7758,
       "max_bbox_height": 194,
       "max_bbox_width": 104,
+      "tier": 3,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 522,
       "exported_name": "mcHouse2",
       "frame_count": 3,
@@ -8235,11 +8615,22 @@
     },
     {
       "base": "sprites/DefineSprite_561",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 38507,
       "max_bbox_height": 376,
       "max_bbox_width": 152,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_sec": 300
+      },
       "character_id": 561,
       "frame_count": 1,
       "role": "building_module",
@@ -8731,11 +9122,22 @@
     },
     {
       "base": "sprites/DefineSprite_598",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 49104,
       "max_bbox_height": 460,
       "max_bbox_width": 142,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_sec": 300
+      },
       "character_id": 598,
       "frame_count": 1,
       "role": "building_module",
@@ -9118,11 +9520,22 @@
     },
     {
       "base": "sprites/DefineSprite_633",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 38020,
       "max_bbox_height": 343,
       "max_bbox_width": 144,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 633,
       "frame_count": 1,
       "role": "building_module",
@@ -9195,7 +9608,7 @@
       "placeable_hint": false,
       "place_count": 40,
       "pool_eligible": false,
-      "building_class": "residential"
+      "building_class": "commercial"
     },
     {
       "base": "sprites/DefineSprite_637",
@@ -9492,11 +9905,22 @@
     },
     {
       "base": "sprites/DefineSprite_663",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 39758,
       "max_bbox_height": 451,
       "max_bbox_width": 174,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 663,
       "frame_count": 1,
       "role": "building_module",
@@ -9582,7 +10006,7 @@
       "placeable_hint": false,
       "place_count": 29,
       "pool_eligible": false,
-      "building_class": "industrial"
+      "building_class": "commercial"
     },
     {
       "base": "sprites/DefineSprite_676",
@@ -9814,11 +10238,22 @@
     },
     {
       "base": "sprites/DefineSprite_690",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 39286,
       "max_bbox_height": 400,
       "max_bbox_width": 167,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 690,
       "frame_count": 1,
       "role": "building_module",
@@ -9901,6 +10336,13 @@
       "max_bbox_height": 473,
       "max_bbox_width": 220,
       "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark",
+        "foot_extra_y": -10
+      },
       "unlock": {
         "min_pop": 350,
         "min_sec": 300
@@ -10207,11 +10649,22 @@
     },
     {
       "base": "sprites/DefineSprite_693_mcHouse3",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 44790,
       "max_bbox_height": 402,
       "max_bbox_width": 217,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_sec": 300
+      },
       "character_id": 693,
       "exported_name": "mcHouse3",
       "frame_count": 1,
@@ -11324,11 +11777,22 @@
     },
     {
       "base": "sprites/DefineSprite_719",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "commercial",
       "max_opaque_pixels": 6735,
       "max_bbox_height": 102,
       "max_bbox_width": 82,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_com": 50
+      },
       "character_id": 719,
       "frame_count": 1,
       "role": "standalone",
@@ -11354,6 +11818,12 @@
       "max_opaque_pixels": 1602,
       "max_bbox_height": 50,
       "max_bbox_width": 39,
+      "stamp": {
+        "kind": "arterial_yard",
+        "footprint_minis": 1,
+        "cross_reserve": true,
+        "nudge_profile": "arterial_yard"
+      },
       "character_id": 721,
       "frame_count": 1,
       "role": "standalone",
@@ -11668,11 +12138,22 @@
     },
     {
       "base": "sprites/DefineSprite_747",
-      "group": "other",
-      "tag": "exclude",
+      "group": "building",
+      "tag": "landmark",
       "max_opaque_pixels": 13320,
       "max_bbox_height": 117,
       "max_bbox_width": 170,
+      "tier": 3,
+      "stamp": {
+        "kind": "landmark_center",
+        "footprint_minis": 16,
+        "cross_reserve": true,
+        "nudge_profile": "landmark"
+      },
+      "unlock": {
+        "min_pop": 350,
+        "min_sec": 300
+      },
       "character_id": 747,
       "frame_count": 1,
       "role": "deco_subpart",
@@ -11721,7 +12202,7 @@
       "placeable_hint": true,
       "place_count": 20,
       "pool_eligible": false,
-      "building_class": "industrial"
+      "building_class": "landmark"
     },
     {
       "base": "sprites/DefineSprite_78",

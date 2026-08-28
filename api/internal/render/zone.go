@@ -75,10 +75,22 @@ func lotOccupancyWithDensity(city *citycore.City, grid cityGrid, dens popDensity
 		return lots[i].jitter < lots[j].jitter
 	})
 
+	var cross [][]uint8
+	var roadMask roadMaskData
+	if !roadless {
+		plan := planRoads(city, dens)
+		cross = plan.cross
+		roadMask = buildRoadMaskDataWithCross(grid, cross, -roadGrassLift)
+	}
+
 	inner := make([]lotCell, 0, len(lots))
 	curb := make([]lotCell, 0, len(lots)/4)
 	for _, lot := range lots {
 		if lotTouchesRoad(grid, lot.x, lot.y) {
+			curb = append(curb, lot)
+			continue
+		}
+		if lotReservedForCross(lot.x, lot.y, cross) {
 			curb = append(curb, lot)
 			continue
 		}
@@ -90,9 +102,7 @@ func lotOccupancyWithDensity(city *citycore.City, grid cityGrid, dens popDensity
 		parkN = len(inner) / 3
 	}
 
-	// Buildings first, then farm cover (Game.hx farm XOR forest), then parks
-	// and env scatter on leftover vacant grass — never on farm cells.
-	fillLotsFromDensity(inner, city, dens, roadless)
+	fillLotsFromDensity(inner, city, dens, roadless, cross)
 
 	out := make(map[[2]int]lotCell, len(lots))
 	for _, lot := range inner {
@@ -106,13 +116,17 @@ func lotOccupancyWithDensity(city *citycore.City, grid cityGrid, dens popDensity
 	expandFarmMargins(out)
 	placeDedicatedParks(out, inner, parkN, pop)
 	for pos, lot := range out {
-		scatterTreeOnEmpty(&lot, city.Env.Int(), lotTouchesRoad(grid, lot.x, lot.y), pop)
+		if lot.use == lotEmpty && !lotReservedForCross(lot.x, lot.y, cross) && !lotTouchesRoad(grid, lot.x, lot.y) {
+			scatterTreeOnEmpty(&lot, city.Env.Int(), pop)
+		}
 		out[pos] = lot
 	}
 	clearParksOffGrass(out, pop)
 	// One-hop farm margins still leave empties cardinal-adjacent to expanded
 	// farm rings; parks there paint tree canopies onto farm (#113).
 	clearParksNearFarms(out)
+	clearParksNearBuildings(out)
+	clearParksOnRoads(out, grid, cross, roadMask, roadless)
 	return out
 }
 
@@ -145,7 +159,58 @@ func clearParksNearFarms(occ map[[2]int]lotCell) {
 	}
 }
 
-func scatterTreeOnEmpty(lot *lotCell, env int, curb bool, pop int) {
+// clearParksNearBuildings drops parks that touch lotBuilding (chebyshev ≤ 1) so
+// tall tree sprites are not drawn in front of adjacent building facades.
+func clearParksNearBuildings(occ map[[2]int]lotCell) {
+	for pos, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		touch := false
+		for dy := -1; dy <= 1 && !touch; dy++ {
+			for dx := -1; dx <= 1; dx++ {
+				if dx == 0 && dy == 0 {
+					continue
+				}
+				n, ok := occ[[2]int{pos[0] + dx, pos[1] + dy}]
+				if ok && n.use == lotBuilding {
+					touch = true
+					break
+				}
+			}
+		}
+		if !touch {
+			continue
+		}
+		lot.use = lotEmpty
+		lot.tag = ""
+		occ[pos] = lot
+	}
+}
+
+// clearParksOnRoads drops parks on road-adjacent lots or painted asphalt (CROSS
+// foot / arterial diamonds) so tree sprites do not sit on street tiles.
+func clearParksOnRoads(occ map[[2]int]lotCell, grid cityGrid, cross [][]uint8, roads roadMaskData, roadless bool) {
+	for pos, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		x, y := pos[0], pos[1] //#nosec G602 -- map key is [2]int
+		if lotTouchesRoad(grid, x, y) || lotReservedForCross(x, y, cross) {
+			lot.use = lotEmpty
+			lot.tag = ""
+			occ[pos] = lot
+			continue
+		}
+		if !roadless && lotOverlapsRoadMask(roads, x, y) {
+			lot.use = lotEmpty
+			lot.tag = ""
+			occ[pos] = lot
+		}
+	}
+}
+
+func scatterTreeOnEmpty(lot *lotCell, env int, pop int) {
 	if lot.use != lotEmpty || env <= 0 {
 		return
 	}
@@ -153,9 +218,6 @@ func scatterTreeOnEmpty(lot *lotCell, env int, curb bool, pop int) {
 		return
 	}
 	chance := env / 2
-	if curb {
-		chance = (env * 3) / 2
-	}
 	if chance > 750 {
 		chance = 750
 	}

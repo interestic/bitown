@@ -389,17 +389,30 @@ func TestLotOccupancyAddsParksWithEnv(t *testing.T) {
 	}
 }
 
-func TestLotOccupancyScattersRoadsideTrees(t *testing.T) {
-	grid := buildCityGridForCity(&citycore.City{Slug: "curb-trees", Pop: 500})
-	occ := lotOccupancy(&citycore.City{Slug: "curb-trees", Pop: 500, Env: 400}, grid)
-	curbParks := 0
-	for pos, lot := range occ {
-		if lot.use == lotPark && lotTouchesRoad(grid, pos[0], pos[1]) {
-			curbParks++
+func TestTreesStayOffRoadLots(t *testing.T) {
+	city := &citycore.City{Slug: "testcity1", Pop: 80, Ind: 530, Com: 30, Env: 140, Sec: 1240}
+	dens := genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String()))
+	plan := planRoads(city, dens)
+	occ := lotOccupancyWithDensity(city, plan.grid, dens)
+	roads := buildRoadMaskDataWithCross(plan.grid, plan.cross, -roadGrassLift)
+	parks := 0
+	for _, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		parks++
+		if lotTouchesRoad(plan.grid, lot.x, lot.y) {
+			t.Fatalf("tree on road-adjacent lot (%d,%d)", lot.x, lot.y)
+		}
+		if lotReservedForCross(lot.x, lot.y, plan.cross) {
+			t.Fatalf("tree on CROSS foot (%d,%d)", lot.x, lot.y)
+		}
+		if lotOverlapsRoadMask(roads, lot.x, lot.y) {
+			t.Fatalf("tree overlaps painted road at (%d,%d)", lot.x, lot.y)
 		}
 	}
-	if curbParks < 20 {
-		t.Fatalf("expected roadside tree scatter, got %d curb parks", curbParks)
+	if parks == 0 {
+		t.Fatal("env=140 should still place trees on interior grass")
 	}
 }
 
@@ -655,5 +668,107 @@ func TestMapEntityTagChangesWithEnv(t *testing.T) {
 	}
 	if a == b {
 		t.Fatal("expected etag to change with env")
+	}
+}
+
+func TestTreesStayOffBuildingLots(t *testing.T) {
+	city := &citycore.City{Slug: "testcity1", Pop: 80, Ind: 530, Com: 30, Env: 140, Sec: 1240}
+	dens := genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String()))
+	plan := planRoads(city, dens)
+	occ := lotOccupancyWithDensity(city, plan.grid, dens)
+	parks := 0
+	for pos, lot := range occ {
+		if lot.use != lotPark {
+			continue
+		}
+		parks++
+		for dy := -1; dy <= 1; dy++ {
+			for dx := -1; dx <= 1; dx++ {
+				if dx == 0 && dy == 0 {
+					continue
+				}
+				n, ok := occ[[2]int{pos[0] + dx, pos[1] + dy}]
+				if ok && n.use == lotBuilding {
+					t.Fatalf("tree at (%d,%d) touches building at (%d,%d)", pos[0], pos[1], pos[0]+dx, pos[1]+dy)
+				}
+			}
+		}
+	}
+	if parks == 0 {
+		t.Fatal("env=140 should still place trees away from buildings")
+	}
+}
+
+func TestNoBuildingsOnCrossFoot(t *testing.T) {
+	city := &citycore.City{Slug: "testcity1", Pop: 80, Ind: 530, Com: 30, Env: 140, Sec: 1240}
+	dens := genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String()))
+	plan := planRoads(city, dens)
+	occ := lotOccupancyWithDensity(city, plan.grid, dens)
+	for sy := 0; sy < len(plan.cross); sy++ {
+		for sx := 0; sx < len(plan.cross[sy]); sx++ {
+			if plan.cross[sy][sx] == 0 {
+				continue
+			}
+			cx, cy := squareCrossFootCell(sx, sy)
+			lot, ok := occ[[2]int{cx, cy}]
+			if !ok {
+				continue
+			}
+			if lot.use == lotBuilding {
+				t.Fatalf("building on CROSS foot (%d,%d)", cx, cy)
+			}
+			if lot.use == lotPark && lot.tag == TagTree {
+				t.Fatalf("tree on CROSS foot (%d,%d)", cx, cy)
+			}
+		}
+	}
+}
+
+func TestCrossSquareAllowsYardRingBuildings(t *testing.T) {
+	city := &citycore.City{Slug: "testcity1", Pop: 80, Ind: 530, Com: 30, Env: 140, Sec: 1240}
+	dens := genMapPop(city.Pop.Int(), newMapRNG(city.Slug.String()))
+	plan := planRoads(city, dens)
+	occ := lotOccupancyWithDensity(city, plan.grid, dens)
+	found := false
+	for sy := 0; sy < len(plan.cross); sy++ {
+		for sx := 0; sx < len(plan.cross[sy]); sx++ {
+			if plan.cross[sy][sx] == 0 {
+				continue
+			}
+			bx, by := sx*squareSide, sy*squareSide
+			for mi := 0; mi < 4; mi++ {
+				ox, oy := miniSquareOrigin(bx, by, mi)
+				x, y := miniHutFoot(ox, oy, 3, false)
+				if lotOnCrossFoot(x, y, plan.cross) {
+					continue
+				}
+				lot, ok := occ[[2]int{x, y}]
+				if ok && lot.use == lotBuilding {
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected yard-ring buildings around CROSS foot in cross square")
+	}
+}
+
+func TestCrossFootMatchesMiniSEFoot3(t *testing.T) {
+	bx, by := 130, 120
+	ox, oy := miniSquareOrigin(bx, by, miniSE)
+	x, y := miniHutFoot(ox, oy, 3, false)
+	if !lotOnPlateCrossFoot(x, y, bx, by) {
+		t.Fatalf("miniSE foot 3 (%d,%d) should match plate cross foot", x, y)
+	}
+	plan := emptyRoadPlan()
+	plan.cross[12][13] = 1
+	if !lotOnCrossFoot(x, y, plan.cross) {
+		t.Fatalf("lotOnCrossFoot should mark (%d,%d) when square has CROSS", x, y)
+	}
+	ox, oy = miniSquareOrigin(bx, by, miniSE)
+	x0, y0 := miniHutFoot(ox, oy, 0, false)
+	if lotOnCrossFoot(x0, y0, plan.cross) {
+		t.Fatalf("miniSE foot 0 (%d,%d) should not be the CROSS foot", x0, y0)
 	}
 }

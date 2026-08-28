@@ -306,9 +306,10 @@ func uniqueSpriteFolders(bases []string) []string {
 }
 
 // PickBuildingKeyForLot picks a building frame using zone tag, local square
-// density (Game.hx) + periphery caps, updateLib house-library gates, and
-// optional landmark mix. Falls back to residential within the same tier cap;
-// empty means callers draw a rectangle (do not bypass via PickBuildingKeyForTag).
+// density (Game.hx) + periphery caps, and updateLib house-library gates.
+// Landmarks are per-square (planSquareLandmarks / sandbox #19), not lot mix.
+// Falls back to residential within the same tier cap; empty means callers draw
+// a rectangle (do not bypass via PickBuildingKeyForTag).
 func (a *Atlas) PickBuildingKeyForLot(city *citycore.City, tag string, x, y int, seed uint32) string {
 	local, densityMax := 0, 0
 	if city != nil {
@@ -335,17 +336,6 @@ func (a *Atlas) pickBuildingKeyForLot(city *citycore.City, tag string, x, y int,
 	}
 	if tag == TagCommercial && city.Com.Int() < sectorMid && maxTier > 1 {
 		maxTier = 1
-	}
-
-	if maxTier >= 3 {
-		chance := landmarkMixPermille(pop, city.Sec.Int(), city.Com.Int())
-		// Fold high and low bits — plain seed%1000 is biased for hashCell coords.
-		roll := int(((seed >> 16) ^ (seed >> 8) ^ seed) % 1000) //#nosec G115
-		if chance > 0 && roll < chance {
-			if key := a.pickBuildingFrameForTagAvoiding(city, TagLandmark, maxTier, pop, densityMax, seed^0x9e3779b9, avoid); key != "" {
-				return key
-			}
-		}
 	}
 
 	key := a.pickBuildingFrameForTagAvoiding(city, tag, maxTier, pop, densityMax, seed, avoid)

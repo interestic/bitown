@@ -24,7 +24,7 @@ func squareMiniPops(slug string, sx, sy, sqPop int) [4]int {
 //
 // Only cells inside the live plate island (Game.hx viewport, capped to the PNG
 // field) are eligible — arterial and roadless share the same island.
-func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, roadless bool) {
+func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, roadless bool, cross [][]uint8) {
 	idxOf := make(map[[2]int]int, len(inner))
 	for i, lot := range inner {
 		idxOf[[2]int{lot.x, lot.y}] = i
@@ -46,8 +46,23 @@ func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, 
 				continue
 			}
 			if sqPop >= csPopHuge {
+				hasCross := !roadless && sy < len(cross) && sx < len(cross[sy]) && cross[sy][sx] > 0
+				if hasCross {
+					for i := 0; i < 4; i++ {
+						px := (i % 2) * 4
+						py := (i / 2) * 4
+						if px > 1 {
+							px++
+						}
+						if py > 1 {
+							py++
+						}
+						genMiniSquareLots(inner, idxOf, baseX+px, baseY+py, 1, city, roadless, pop, slug, sx, sy, i, cross)
+					}
+					continue
+				}
 				sqRNG := newMapRNGKeyed(slug, uint32(sx*131+sy*17+1)) //#nosec G115 -- square index
-				placeDensityLot(inner, idxOf, baseX, baseY, city, roadless, pop, sqRNG, true)
+				placeDensityLot(inner, idxOf, baseX, baseY, city, roadless, pop, sqRNG, true, cross)
 				continue
 			}
 
@@ -61,7 +76,7 @@ func fillLotsFromDensity(inner []lotCell, city *citycore.City, dens popDensity, 
 				if py > 1 {
 					py++
 				}
-				genMiniSquareLots(inner, idxOf, baseX+px, baseY+py, rep[i], city, roadless, pop, slug, sx, sy, i)
+				genMiniSquareLots(inner, idxOf, baseX+px, baseY+py, rep[i], city, roadless, pop, slug, sx, sy, i, cross)
 			}
 		}
 	}
@@ -107,6 +122,7 @@ func genMiniSquareLots(
 	pop int,
 	slug string,
 	sx, sy, n int,
+	cross [][]uint8,
 ) {
 	rval := uint32(sx*1009 + sy*917 + n*131 + 1) //#nosec G115
 	rng := newMapRNGKeyed(slug, rval)
@@ -114,8 +130,21 @@ func genMiniSquareLots(
 	if sqPop <= 0 {
 		return
 	}
+	// CROSS squares: arterial_yard ring — one building per mini at foot 3 (toward
+	// junction). miniSE foot 3 is the CROSS cell itself and stays vacant.
+	hasCross := !roadless && sy < len(cross) && sx < len(cross[sy]) && cross[sy][sx] > 0
+	if hasCross {
+		nx, ny := miniHutFoot(bx, by, 3, false)
+		if lotOnCrossFoot(nx, ny, cross) {
+			return
+		}
+		forceHut := sqPop < densityHut
+		rich := sqPop > csPopNormal
+		placeDensityLotAt(inner, idxOf, nx, ny, city, roadless, pop, rng, forceHut, rich, cross)
+		return
+	}
 	if sqPop >= csPopBig {
-		placeDensityLot(inner, idxOf, bx, by, city, roadless, pop, rng, true)
+		placeDensityLot(inner, idxOf, bx, by, city, roadless, pop, rng, true, cross)
 		return
 	}
 
@@ -131,7 +160,7 @@ func genMiniSquareLots(
 		nx, ny := miniHutFoot(bx, by, i, roadless)
 		forceHut := sqPop < densityHut
 		rich := rep[i] > csPopNormal
-		placeDensityLotAt(inner, idxOf, nx, ny, city, roadless, pop, sub, forceHut, rich)
+		placeDensityLotAt(inner, idxOf, nx, ny, city, roadless, pop, sub, forceHut, rich, cross)
 	}
 }
 
@@ -157,8 +186,9 @@ func placeDensityLot(
 	pop int,
 	rng *mapRNG,
 	rich bool,
+	cross [][]uint8,
 ) {
-	placeDensityLotAt(inner, idxOf, x, y, city, roadless, pop, rng, false, rich)
+	placeDensityLotAt(inner, idxOf, x, y, city, roadless, pop, rng, false, rich, cross)
 }
 
 func placeDensityLotAt(
@@ -171,8 +201,12 @@ func placeDensityLotAt(
 	rng *mapRNG,
 	forceHut bool,
 	rich bool,
+	cross [][]uint8,
 ) {
 	if !inPlateIsland(pop, x, y) {
+		return
+	}
+	if !roadless && lotOnCrossFoot(x, y, cross) {
 		return
 	}
 	// Feet stay on plate grass tops (not soil rim). Center snap used to force
